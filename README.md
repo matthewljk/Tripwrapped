@@ -12,7 +12,7 @@ Next.js app for shared trip photo/video galleries. Users sign in (Google or emai
 
 - **Trip** — `tripCode`, `name`, `allowAnyMemberToDelete` (trip setting for who can delete gallery media); GSI on tripCode
 - **TripMember** — `tripId`, `userId`, `role`; GSIs on tripId, userId
-- **Media** — `tripId`, `storagePath`, `uploadedBy`, `uploadedByUsername`; GSI on tripId. Files in S3 at `media/{entity_id}/*`
+- **Media** — `tripId`, `storagePath`, `uploadedBy`, `uploadedByUsername`; GSI on tripId. Owner-based delete uses `uploadedBy`. Files in S3 at `media/{entity_id}/*`
 - **UserPreference** — `activeTripId` (default trip per user)
 - **UserProfile** — `userId`, `username` (display name for uploads); GSI on userId
 
@@ -28,8 +28,8 @@ Custom mutation **`deleteTripMedia(mediaId)`** — allows a trip member to delet
 **Auth:** Amplify `<Authenticator>` (Google + email). First-time email users get a set-username prompt; Google users use profile from name. Optional login background video from `public/login-videos/background.mp4` or `.webm`.
 
 **Delete policy:** Per trip, owners choose:
-- **Only delete my own uploads** — only the uploader sees a delete button on their items.
-- **Any trip member can delete** — all members can delete any photo/video in the gallery.
+- **Only delete my own uploads** — only the uploader sees a delete button; backend enforces owner via `uploadedBy`.
+- **Any trip member can delete** — all members can delete any photo/video; enforced by `deleteTripMedia` Lambda.
 
 ## Key paths
 
