@@ -9,16 +9,27 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@aws-amplify/backend": "^1.21.0",
+    "@aws-amplify/ui-react": "^6.15.0",
+    "aws-amplify": "^6.16.2",
+    "browser-image-compression": "^2.0.2",
     "next": "16.1.6",
     "react": "19.2.3",
     "react-dom": "19.2.3"
   },
+  "overrides": {
+    "@aws-amplify/plugin-types": "1.11.2"
+  },
   "devDependencies": {
+    "@aws-amplify/backend-cli": "^1.8.2",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "aws-cdk-lib": "^2.239.0",
     "babel-plugin-react-compiler": "1.0.0",
+    "constructs": "^10.5.1",
+    "esbuild": "^0.27.3",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "tailwindcss": "^4",

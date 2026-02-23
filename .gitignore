@@ -36,6 +36,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# Amplify CLI (local artifacts)
+.amplify/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

@@ -1,0 +1,76 @@
+import { type ClientSchema, a, defineData, defineFunction } from '@aws-amplify/backend';
+
+const deleteTripMediaHandler = defineFunction({
+  entry: './delete-media-handler/handler.ts',
+});
+
+const schema = a.schema({
+  Trip: a
+    .model({
+      tripCode: a.string().required(),
+      name: a.string(),
+      allowAnyMemberToDelete: a.boolean(),
+    })
+    .secondaryIndexes((index) => [index('tripCode')])
+    .authorization((allow) => [
+      allow.authenticated().to(['read', 'create']),
+      allow.owner().to(['update', 'delete']),
+    ]),
+
+  TripMember: a
+    .model({
+      tripId: a.id().required(),
+      userId: a.string().required(),
+      role: a.string().required(),
+    })
+    .secondaryIndexes((index) => [index('tripId'), index('userId')])
+    .authorization((allow) => [
+      allow.authenticated().to(['read', 'create']),
+      allow.owner().to(['update', 'delete']),
+    ]),
+
+  Media: a
+    .model({
+      tripId: a.id().required(),
+      storagePath: a.string().required(),
+      uploadedBy: a.string().required(),
+      uploadedByUsername: a.string(),
+    })
+    .secondaryIndexes((index) => [index('tripId')])
+    .authorization((allow) => [
+      allow.authenticated().to(['read', 'create']),
+      allow.ownerDefinedIn('uploadedBy').to(['update', 'delete']),
+    ]),
+
+  UserProfile: a
+    .model({
+      userId: a.string().required(),
+      username: a.string().required(),
+    })
+    .secondaryIndexes((index) => [index('userId')])
+    .authorization((allow) => [
+      allow.authenticated().to(['read']),
+      allow.owner().to(['create', 'update', 'delete']),
+    ]),
+
+  UserPreference: a
+    .model({
+      activeTripId: a.id(),
+    })
+    .authorization((allow) => [allow.owner()]),
+
+  DeleteTripMediaResult: a.customType({
+    success: a.boolean(),
+    message: a.string(),
+  }),
+
+  deleteTripMedia: a
+    .mutation()
+    .arguments({ mediaId: a.id().required() })
+    .returns(a.ref('DeleteTripMediaResult'))
+    .authorization((allow) => [allow.authenticated()])
+    .handler(a.handler.function(deleteTripMediaHandler)),
+});
+
+export type Schema = ClientSchema<typeof schema>;
+export const data = defineData({ schema });

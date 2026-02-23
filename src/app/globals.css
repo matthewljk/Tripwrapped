@@ -2,7 +2,13 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #0f172a;
+  --accent: #1e40af;
+  --accent-hover: #1e3a8a;
+  --muted: #64748b;
+  --border: #e2e8f0;
+  --card: #ffffff;
+  --card-border: #f1f5f9;
 }
 
 @theme inline {
@@ -12,15 +18,56 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-plus-jakarta), ui-sans-serif, system-ui, sans-serif;
+}
+
+.btn-primary {
+  @apply inline-flex items-center justify-center rounded-xl bg-[var(--accent)] px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-[var(--accent-hover)] hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2;
+}
+
+.card {
+  @apply rounded-2xl border border-[var(--card-border)] bg-[var(--card)] shadow-sm;
+}
+
+[data-amplify-authenticator] {
+  --amplify-components-button-primary-background-color: #1e40af;
+  --amplify-components-button-primary-hover-background-color: #1e3a8a;
+  --amplify-components-button-link-color: #1e40af;
+  --amplify-components-tabs-item-active-color: #1e40af;
+  --amplify-components-tabs-item-focus-color: #1e40af;
+  --amplify-components-fieldcontrol-focus-border-color: #1e40af;
+  --amplify-components-fieldcontrol-focus-box-shadow: 0 0 0 2px #1e40af;
+}
+
+.login-video-background {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+}
+
+body:has([data-amplify-authenticator]) .login-video-background {
+  display: block;
+}
+
+body:has([data-amplify-authenticator]) [data-amplify-authenticator] {
+  position: relative;
+  z-index: 1;
+}
+
+body:has([data-amplify-authenticator]) {
+  background: linear-gradient(180deg, #0f172a 0%, #1e3a5f 100%) !important;
+  min-height: 100vh;
+}
+
+body:has([data-amplify-authenticator]) [data-amplify-authenticator] {
+  --amplify-colors-background-primary: #ffffff;
+  --amplify-colors-background-secondary: #f8fafc;
+  border-radius: 1rem;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.4);
 }
