@@ -369,8 +369,8 @@ export default function MediaGallery({ activeTripId, activeTrip, userId, refresh
     setViewMode((v) => (v === 'grid' ? 'metadata' : 'grid'));
   }, []);
 
-  const canDelete = (item: MediaItem) =>
-    userId && activeTrip && (item.uploadedBy === userId || activeTrip.allowAnyMemberToDelete);
+  const canDelete = (item: MediaItem): boolean =>
+    Boolean(userId && activeTrip && (item.uploadedBy === userId || activeTrip.allowAnyMemberToDelete));
 
   const invalidateListCache = useCallback(() => {
     if (typeof sessionStorage !== 'undefined') {
