@@ -30,7 +30,7 @@ export function useUserProfile() {
     setError(null);
     try {
       const { userId } = await getCurrentUser();
-      const attrs = await fetchUserAttributes().catch(() => ({} as Record<string, string>));
+      const attrs = (await fetchUserAttributes().catch(() => ({}))) as Record<string, string>;
       const email = attrs.email ?? attrs['custom:email'] ?? '';
       const name = attrs.name ?? attrs.given_name ?? '';
       const suggestion = name.trim()
