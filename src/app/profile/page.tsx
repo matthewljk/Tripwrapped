@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import LoadingSpinner from '@/components/LoadingSpinner';
 import { useUserProfile } from '@/hooks/useUserProfile';
 
 export default function ProfilePage() {
@@ -34,18 +35,12 @@ export default function ProfilePage() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="h-10 w-10 animate-pulse rounded-xl bg-blue-200" />
-      </div>
-    );
-  }
+  if (loading) return <LoadingSpinner />;
 
   return (
     <>
-      <div className="h-16" />
-      <div className="mx-auto max-w-xl px-4 py-12 sm:px-6">
+      <div className="h-14 sm:h-16" />
+      <div className="mx-auto max-w-xl px-4 py-8 sm:px-6 sm:py-12 safe-area-padding">
         <h1 className="text-2xl font-bold tracking-tight text-slate-900">Profile</h1>
         <p className="mt-2 text-slate-600">Manage your username and account settings.</p>
         {!profileAvailable && (

@@ -25,7 +25,7 @@ export default function TripSelector() {
             id="trip-select-default"
             value={activeTripId}
             onChange={(e) => setActiveTripId(e.target.value || null)}
-            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
+            className="min-h-[44px] rounded-xl border border-slate-200 bg-white px-4 py-3 text-base font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
           >
             {trips.map((t) => (
               <option key={t.id} value={t.id}>{t.name || t.tripCode}</option>
@@ -33,7 +33,7 @@ export default function TripSelector() {
           </select>
         </>
       )}
-      <Link href="/trips" className="text-sm font-medium text-blue-600 hover:text-blue-800">
+      <Link href="/trips" className="min-h-[44px] inline-flex items-center text-sm font-medium text-blue-600 hover:text-blue-800">
         Manage trips
       </Link>
     </div>

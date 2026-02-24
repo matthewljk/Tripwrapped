@@ -35,6 +35,9 @@ const schema = a.schema({
       storagePath: a.string().required(),
       uploadedBy: a.string().required(),
       uploadedByUsername: a.string(),
+      lat: a.float(),
+      lng: a.float(),
+      timestamp: a.string(),
     })
     .secondaryIndexes((index) => [index('tripId')])
     .authorization((allow) => [

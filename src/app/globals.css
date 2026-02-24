@@ -18,18 +18,59 @@
   --font-mono: var(--font-geist-mono);
 }
 
+html {
+  /* Prefer dynamic viewport so mobile layout adapts when browser chrome shows/hides */
+  min-height: 100dvh;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-plus-jakarta), ui-sans-serif, system-ui, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  min-height: 100dvh;
+}
+
+/* Safe area for notched devices (mobile-first) */
+.safe-area-padding {
+  padding-left: env(safe-area-inset-left, 0);
+  padding-right: env(safe-area-inset-right, 0);
+}
+
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+/* Dynamic viewport: adapts when mobile browser UI shows/hides */
+.min-h-dscreen {
+  min-height: 100dvh;
+}
+.min-h-dscreen-half {
+  min-height: 50dvh;
+}
+
+/* Desktop (webapp): ensure no mobile bottom nav space, clean layout */
+body.layout-desktop main {
+  padding-bottom: 0;
 }
 
 .btn-primary {
-  @apply inline-flex items-center justify-center rounded-xl bg-[var(--accent)] px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-[var(--accent-hover)] hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2;
+  @apply inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl bg-[var(--accent)] px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-[var(--accent-hover)] hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 active:scale-[0.98];
 }
 
 .card {
   @apply rounded-2xl border border-[var(--card-border)] bg-[var(--card)] shadow-sm;
+}
+
+/* Prevent iOS zoom on input focus (mobile-friendly) */
+@media (max-width: 768px) {
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  select,
+  textarea {
+    font-size: 16px;
+  }
 }
 
 [data-amplify-authenticator] {
@@ -61,7 +102,7 @@ body:has([data-amplify-authenticator]) [data-amplify-authenticator] {
 
 body:has([data-amplify-authenticator]) {
   background: linear-gradient(180deg, #0f172a 0%, #1e3a5f 100%) !important;
-  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 body:has([data-amplify-authenticator]) [data-amplify-authenticator] {

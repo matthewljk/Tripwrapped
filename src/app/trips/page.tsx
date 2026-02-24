@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { getCurrentUser } from 'aws-amplify/auth';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../../amplify/data/resource';
+import LoadingSpinner from '@/components/LoadingSpinner';
 import { useActiveTrip } from '@/hooks/useActiveTrip';
 
 const client = generateClient<Schema>();
@@ -95,16 +96,10 @@ export default function TripsPage() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="h-12 w-12 animate-pulse rounded-2xl bg-blue-100" />
-      </div>
-    );
-  }
+  if (loading) return <LoadingSpinner />;
 
   return (
-    <div className="mx-auto max-w-2xl px-4 pb-24 pt-24 sm:px-6">
+    <div className="mx-auto max-w-2xl px-4 pb-28 pt-20 sm:pb-24 sm:pt-24 sm:px-6 safe-area-padding">
       <h1 className="text-3xl font-bold tracking-tight text-slate-900">Trips</h1>
       <p className="mt-2 text-slate-600">Create a trip or join one with a code.</p>
       {hasTrip && (
