@@ -39,6 +39,9 @@ yarn-error.log*
 # Amplify CLI (local artifacts)
 .amplify/
 
+# Use only repo-root amplify_outputs.json (see README "Local vs production config")
+src/amplify_outputs.json
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

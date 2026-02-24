@@ -49,7 +49,7 @@ function UploaderAvatar({ username }: { username: string | null | undefined }) {
       <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-slate-600 text-xs font-semibold text-white shadow ring-2 ring-white" aria-label={`Uploaded by ${displayName}`}>
         {initial}
       </div>
-      <span role="tooltip" className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded-lg bg-slate-800 px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity duration-150 group-hover/avatar:opacity-100">
+      <span role="tooltip" className="pointer-events-none absolute bottom-full left-1/2 z-[100] mb-1.5 -translate-x-1/2 whitespace-nowrap rounded-lg bg-slate-800 px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity duration-150 group-hover/avatar:opacity-100">
         {displayName}
       </span>
     </div>
@@ -363,18 +363,31 @@ export default function MediaGallery({ activeTripId, activeTrip, userId, refresh
                 onClick={() => (selectMode ? toggleSelection(item.id) : openLightbox(item))}
                 className={`block w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 ${selectMode && selected ? 'ring-2 ring-blue-600 ring-offset-2' : ''}`}
               >
-                <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-200 group-hover:shadow-md">
+                <div className="relative rounded-2xl border border-slate-200 bg-white shadow-sm transition-shadow duration-200 group-hover:shadow-md">
+                  {/* In-flow sizer so the card has height (masonry); invisible so only the layered media shows */}
                   {item.url && isImage(item.path) && (
-                    <img src={item.url} alt="" className="w-full object-cover align-top transition-transform duration-200 group-hover:scale-[1.02]" />
+                    <img src={item.url} alt="" className="w-full object-cover align-top opacity-0 pointer-events-none" aria-hidden />
                   )}
                   {item.url && isVideo(item.path) && (
-                    <video src={item.url} className="w-full object-cover align-top transition-transform duration-200 group-hover:scale-[1.02]" muted playsInline preload="metadata" />
+                    <div className="aspect-video w-full" aria-hidden />
                   )}
                   {item.url && !isImage(item.path) && !isVideo(item.path) && (
-                    <div className="flex aspect-square w-full items-center justify-center bg-slate-100 text-4xl">📎</div>
+                    <div className="aspect-square w-full" aria-hidden />
                   )}
+                  {/* Media in its own layer (z-0) so overlay + tooltip always sit on top */}
+                  <div className="absolute inset-0 z-0 overflow-hidden rounded-2xl">
+                    {item.url && isImage(item.path) && (
+                      <img src={item.url} alt="" className="h-full w-full object-cover align-top transition-transform duration-200 group-hover:scale-[1.02]" />
+                    )}
+                    {item.url && isVideo(item.path) && (
+                      <video src={item.url} className="h-full w-full object-cover align-top transition-transform duration-200 group-hover:scale-[1.02]" muted playsInline preload="metadata" />
+                    )}
+                    {item.url && !isImage(item.path) && !isVideo(item.path) && (
+                      <div className="flex aspect-square w-full items-center justify-center bg-slate-100 text-4xl">📎</div>
+                    )}
+                  </div>
                   {selectMode && (
-                    <div className="absolute left-2 top-2 flex h-8 w-8 items-center justify-center rounded-lg bg-slate-900/70 text-white" aria-hidden>
+                    <div className="absolute left-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-lg bg-slate-900/70 text-white" aria-hidden>
                       {selected ? (
                         <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
                       ) : (
@@ -383,12 +396,12 @@ export default function MediaGallery({ activeTripId, activeTrip, userId, refresh
                     </div>
                   )}
                   {!selectMode && (
-                    <div className="absolute bottom-2 left-2" onClick={(e) => e.stopPropagation()}>
+                    <div className="absolute bottom-2 left-2 z-10" onClick={(e) => e.stopPropagation()}>
                       <UploaderAvatar username={item.uploadedByUsername} />
                     </div>
                   )}
                   {!selectMode && (
-                    <div className="absolute right-2 top-2 flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                    <div className="absolute right-2 top-2 z-10 flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                       <button
                         type="button"
                         onClick={() => handleDownload(item)}

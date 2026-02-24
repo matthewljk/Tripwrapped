@@ -101,7 +101,7 @@ export default function TripsPage() {
   return (
     <div className="mx-auto max-w-2xl px-4 pb-28 pt-20 sm:pb-24 sm:pt-24 sm:px-6 safe-area-padding">
       <h1 className="text-3xl font-bold tracking-tight text-slate-900">Trips</h1>
-      <p className="mt-2 text-slate-600">Create a trip or join one with a code.</p>
+      <p className="mt-2 text-slate-600">Join a trip with a code or create your own.</p>
       {hasTrip && (
         <section className="card mt-10 p-6 sm:p-8">
           <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">Active trip</p>
@@ -155,6 +155,19 @@ export default function TripsPage() {
         </section>
       )}
       <section className="card mt-10 p-6 sm:p-8">
+        <h2 className="text-xl font-bold text-slate-900">Join a trip</h2>
+        <p className="mt-2 text-slate-600">Enter the code someone shared with you.</p>
+        <form onSubmit={handleJoin} className="mt-6 space-y-5">
+          <div>
+            <label htmlFor="join-code" className="block text-sm font-semibold text-slate-700">Trip code</label>
+            <input id="join-code" type="text" value={joinCode} onChange={(e) => setJoinCode(e.target.value)} placeholder="e.g. BALI2026" className="mt-2 block w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2" disabled={joinBusy} />
+          </div>
+          {joinError && <p className="text-sm font-medium text-red-600">{joinError}</p>}
+          {joinSuccess && <p className="text-sm font-medium text-slate-600">You joined the trip.</p>}
+          <button type="submit" disabled={joinBusy} className="btn-primary">{joinBusy ? 'Joining…' : 'Join trip'}</button>
+        </form>
+      </section>
+      <section className="card mt-10 p-6 sm:p-8">
         <h2 className="text-xl font-bold text-slate-900">Create a trip</h2>
         <p className="mt-2 text-slate-600">Pick a unique code others will use to join.</p>
         <form onSubmit={handleCreate} className="mt-6 space-y-5">
@@ -182,19 +195,6 @@ export default function TripsPage() {
           {createError && <p className="text-sm font-medium text-red-600">{createError}</p>}
           {createSuccess && <p className="text-sm font-medium text-slate-600">Trip created.</p>}
           <button type="submit" disabled={createBusy} className="btn-primary">{createBusy ? 'Creating…' : 'Create trip'}</button>
-        </form>
-      </section>
-      <section className="card mt-10 p-6 sm:p-8">
-        <h2 className="text-xl font-bold text-slate-900">Join a trip</h2>
-        <p className="mt-2 text-slate-600">Enter the code someone shared with you.</p>
-        <form onSubmit={handleJoin} className="mt-6 space-y-5">
-          <div>
-            <label htmlFor="join-code" className="block text-sm font-semibold text-slate-700">Trip code</label>
-            <input id="join-code" type="text" value={joinCode} onChange={(e) => setJoinCode(e.target.value)} placeholder="e.g. BALI2026" className="mt-2 block w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2" disabled={joinBusy} />
-          </div>
-          {joinError && <p className="text-sm font-medium text-red-600">{joinError}</p>}
-          {joinSuccess && <p className="text-sm font-medium text-slate-600">You joined the trip.</p>}
-          <button type="submit" disabled={joinBusy} className="btn-primary">{joinBusy ? 'Joining…' : 'Join trip'}</button>
         </form>
       </section>
     </div>
