@@ -1,12 +1,16 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, memo } from 'react';
 import { getUrl } from 'aws-amplify/storage';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../amplify/data/resource';
 
 const dataClient = generateClient<Schema>();
 const URL_EXPIRES_IN = 3600;
+const INITIAL_DISPLAY_COUNT = 10;
+const LOAD_MORE_COUNT = 10;
+const LIST_CACHE_KEY_PREFIX = 'gallery-list-';
+const LIST_CACHE_TTL_MS = 5 * 60 * 1000; // 5 min
 
 type MediaItem = {
   id: string;
@@ -14,6 +18,9 @@ type MediaItem = {
   url?: string;
   uploadedBy: string;
   uploadedByUsername?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  timestamp?: string | null;
 };
 
 function isImage(path: string): boolean {
@@ -22,6 +29,31 @@ function isImage(path: string): boolean {
 
 function isVideo(path: string): boolean {
   return /\.(mp4|webm|ogg|mov|avi|mkv)$/i.test(path);
+}
+
+type SortOption = 'date-desc' | 'date-asc' | 'type-desc' | 'type-asc' | 'user-asc' | 'user-desc';
+
+function sortMediaItems<T extends { path: string; timestamp?: string | null; uploadedByUsername?: string | null }>(
+  list: T[],
+  sort: SortOption
+): T[] {
+  const arr = [...list];
+  switch (sort) {
+    case 'date-desc':
+      return arr.sort((a, b) => (b.timestamp ?? '').localeCompare(a.timestamp ?? ''));
+    case 'date-asc':
+      return arr.sort((a, b) => (a.timestamp ?? '').localeCompare(b.timestamp ?? ''));
+    case 'type-desc':
+      return arr.sort((a, b) => (isVideo(b.path) ? 1 : 0) - (isVideo(a.path) ? 1 : 0)); // photos first
+    case 'type-asc':
+      return arr.sort((a, b) => (isVideo(a.path) ? 1 : 0) - (isVideo(b.path) ? 1 : 0)); // videos first
+    case 'user-asc':
+      return arr.sort((a, b) => (a.uploadedByUsername ?? '').localeCompare(b.uploadedByUsername ?? ''));
+    case 'user-desc':
+      return arr.sort((a, b) => (b.uploadedByUsername ?? '').localeCompare(a.uploadedByUsername ?? ''));
+    default:
+      return arr;
+  }
 }
 
 function downloadFilename(item: MediaItem): string {
@@ -56,6 +88,130 @@ function UploaderAvatar({ username }: { username: string | null | undefined }) {
   );
 }
 
+type GalleryCardProps = {
+  item: MediaItem;
+  selected: boolean;
+  selectMode: boolean;
+  downloadingId: string | null;
+  deletingId: string | null;
+  canDelete: boolean;
+  onCardClick: (item: MediaItem) => void;
+  onToggleSelection: (id: string) => void;
+  onDownload: (item: MediaItem) => void;
+  onDelete: (item: MediaItem) => void;
+};
+
+const GalleryCard = memo(function GalleryCard({
+  item,
+  selected,
+  selectMode,
+  downloadingId,
+  deletingId,
+  canDelete,
+  onCardClick,
+  onToggleSelection,
+  onDownload,
+  onDelete,
+}: GalleryCardProps) {
+  return (
+    <div className="group relative mb-5 block w-full break-inside-avoid lg:mb-6">
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => (selectMode ? onToggleSelection(item.id) : item.url ? onCardClick(item) : undefined)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            if (selectMode) onToggleSelection(item.id);
+            else if (item.url) onCardClick(item);
+          }
+        }}
+        className={`block w-full cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 ${selectMode && selected ? 'ring-2 ring-blue-600 ring-offset-2' : ''}`}
+      >
+        <div className="relative rounded-2xl border border-slate-200 bg-white shadow-sm transition-shadow duration-200 group-hover:shadow-md">
+          {!item.url ? (
+            <>
+              <div className="aspect-square w-full" aria-hidden />
+              <div className="absolute inset-0 z-0 flex items-center justify-center overflow-hidden rounded-2xl bg-slate-100">
+                <span className="h-8 w-8 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600" aria-hidden />
+              </div>
+            </>
+          ) : (
+            <>
+              {isImage(item.path) && (
+                <img src={item.url} alt="" loading="lazy" decoding="async" className="w-full object-cover align-top opacity-0 pointer-events-none" aria-hidden />
+              )}
+              {isVideo(item.path) && (
+                <div className="aspect-video w-full" aria-hidden />
+              )}
+              {!isImage(item.path) && !isVideo(item.path) && (
+                <div className="aspect-square w-full" aria-hidden />
+              )}
+              <div className="absolute inset-0 z-0 overflow-hidden rounded-2xl">
+                {isImage(item.path) && (
+                  <img src={item.url} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover align-top transition-transform duration-200 group-hover:scale-[1.02]" />
+                )}
+                {isVideo(item.path) && (
+                  <video src={item.url} className="h-full w-full object-cover align-top transition-transform duration-200 group-hover:scale-[1.02]" muted playsInline preload="metadata" />
+                )}
+                {!isImage(item.path) && !isVideo(item.path) && (
+                  <div className="flex aspect-square w-full items-center justify-center bg-slate-100 text-4xl">📎</div>
+                )}
+              </div>
+            </>
+          )}
+          {selectMode && (
+            <div className="absolute left-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-lg bg-slate-900/70 text-white" aria-hidden>
+              {selected ? (
+                <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+              ) : (
+                <div className="h-5 w-5 rounded border-2 border-white" />
+              )}
+            </div>
+          )}
+          {!selectMode && (
+            <div className="absolute bottom-2 left-2 z-10" onClick={(e) => e.stopPropagation()}>
+              <UploaderAvatar username={item.uploadedByUsername} />
+            </div>
+          )}
+          {!selectMode && (
+            <div className="absolute right-2 top-2 z-10 flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+              <button
+                type="button"
+                onClick={() => onDownload(item)}
+                disabled={downloadingId === item.id}
+                className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-900/70 text-white shadow hover:bg-slate-800/80 disabled:opacity-50"
+                aria-label="Download"
+              >
+                {downloadingId === item.id ? (
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                ) : (
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                )}
+              </button>
+              {canDelete && (
+                <button
+                  type="button"
+                  onClick={() => onDelete(item)}
+                  disabled={deletingId === item.id}
+                  className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-900/70 text-white shadow hover:bg-slate-800/80 disabled:opacity-50"
+                  aria-label="Delete"
+                >
+                  {deletingId === item.id ? (
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  ) : (
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                  )}
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+});
+
 function GalleryToolbar({
   lastRefreshedAt,
   onRefresh,
@@ -68,6 +224,10 @@ function GalleryToolbar({
   onClearSelection,
   onDownloadSelected,
   downloadingMultiple,
+  viewMode,
+  onSwitchView,
+  sortOption,
+  onSortChange,
 }: {
   lastRefreshedAt: Date | null;
   onRefresh: () => void;
@@ -80,6 +240,10 @@ function GalleryToolbar({
   onClearSelection?: () => void;
   onDownloadSelected?: () => void;
   downloadingMultiple?: boolean;
+  viewMode?: 'grid' | 'metadata';
+  onSwitchView?: () => void;
+  sortOption?: SortOption;
+  onSortChange?: (sort: SortOption) => void;
 }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -87,6 +251,32 @@ function GalleryToolbar({
         {lastRefreshedAt ? <>Last refreshed {formatLastRefreshed(lastRefreshedAt)}</> : '—'}
       </span>
       <div className="flex flex-wrap items-center gap-2">
+        {onSortChange && sortOption !== undefined && (
+          <select
+            value={sortOption}
+            onChange={(e) => onSortChange(e.target.value as SortOption)}
+            className="min-h-[44px] rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
+            aria-label="Sort by"
+          >
+            <option value="date-desc">Newest first</option>
+            <option value="date-asc">Oldest first</option>
+            <option value="type-desc">Photos first</option>
+            <option value="type-asc">Videos first</option>
+            <option value="user-asc">User A–Z</option>
+            <option value="user-desc">User Z–A</option>
+          </select>
+        )}
+        {onSwitchView && (
+          <button
+            type="button"
+            onClick={onSwitchView}
+            className={`rounded-xl border px-4 py-2.5 text-sm font-medium ${viewMode === 'metadata' ? 'border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'}`}
+            aria-pressed={viewMode === 'metadata'}
+            aria-label={viewMode === 'metadata' ? 'Switch to grid view' : 'Switch to metadata view'}
+          >
+            {viewMode === 'metadata' ? 'Grid view' : 'Metadata view'}
+          </button>
+        )}
         {selectMode && selectedCount !== undefined && (
           <>
             <span className="text-sm font-medium text-slate-700">{selectedCount} selected</span>
@@ -150,8 +340,12 @@ type MediaGalleryProps = {
 };
 
 export default function MediaGallery({ activeTripId, activeTrip, userId, refreshTrigger = 0 }: MediaGalleryProps) {
-  const [items, setItems] = useState<MediaItem[]>([]);
+  const [rawList, setRawList] = useState<MediaItem[]>([]);
+  const [urlMap, setUrlMap] = useState<Record<string, string>>({});
+  const [displayedCount, setDisplayedCount] = useState(INITIAL_DISPLAY_COUNT);
+  const [sortOption, setSortOption] = useState<SortOption>('date-desc');
   const [loading, setLoading] = useState(true);
+  const [loadingMoreUrls, setLoadingMoreUrls] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lightboxItem, setLightboxItem] = useState<MediaItem | null>(null);
   const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(null);
@@ -161,10 +355,32 @@ export default function MediaGallery({ activeTripId, activeTrip, userId, refresh
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [downloadingMultiple, setDownloadingMultiple] = useState(false);
+  const [viewMode, setViewMode] = useState<'grid' | 'metadata'>('grid');
   const [, setTick] = useState(0);
+
+  const sortedList = sortMediaItems(rawList, sortOption);
+  const displayedItems: MediaItem[] = sortedList.slice(0, displayedCount).map((meta) => ({
+    ...meta,
+    url: urlMap[meta.id],
+  }));
+
+  const switchView = useCallback(() => {
+    setLightboxItem(null);
+    setViewMode((v) => (v === 'grid' ? 'metadata' : 'grid'));
+  }, []);
 
   const canDelete = (item: MediaItem) =>
     userId && activeTrip && (item.uploadedBy === userId || activeTrip.allowAnyMemberToDelete);
+
+  const invalidateListCache = useCallback(() => {
+    if (typeof sessionStorage !== 'undefined') {
+      try {
+        sessionStorage.removeItem(`${LIST_CACHE_KEY_PREFIX}${activeTripId}`);
+      } catch {
+        // ignore
+      }
+    }
+  }, [activeTripId]);
 
   const handleDelete = useCallback(
     async (item: MediaItem) => {
@@ -174,8 +390,14 @@ export default function MediaGallery({ activeTripId, activeTrip, userId, refresh
       try {
         if (item.uploadedBy === userId) {
           await dataClient.models.Media.delete({ id: item.id });
-          setItems((prev) => prev.filter((i) => i.id !== item.id));
+          setRawList((prev) => prev.filter((i) => i.id !== item.id));
+          setUrlMap((prev) => {
+            const next = { ...prev };
+            delete next[item.id];
+            return next;
+          });
           if (lightboxItem?.id === item.id) setLightboxItem(null);
+          invalidateListCache();
         } else {
           const { data, errors } = await dataClient.mutations.deleteTripMedia({ mediaId: item.id });
           if (errors?.length) {
@@ -183,8 +405,14 @@ export default function MediaGallery({ activeTripId, activeTrip, userId, refresh
             return;
           }
           if (data?.success) {
-            setItems((prev) => prev.filter((i) => i.id !== item.id));
+            setRawList((prev) => prev.filter((i) => i.id !== item.id));
+            setUrlMap((prev) => {
+              const next = { ...prev };
+              delete next[item.id];
+              return next;
+            });
             if (lightboxItem?.id === item.id) setLightboxItem(null);
+            invalidateListCache();
           } else {
             setError(data?.message ?? 'Delete was not allowed');
           }
@@ -195,7 +423,7 @@ export default function MediaGallery({ activeTripId, activeTrip, userId, refresh
         setDeletingId(null);
       }
     },
-    [userId, lightboxItem?.id]
+    [userId, lightboxItem?.id, invalidateListCache]
   );
 
   useEffect(() => {
@@ -204,68 +432,146 @@ export default function MediaGallery({ activeTripId, activeTrip, userId, refresh
     return () => clearInterval(id);
   }, [lastRefreshedAt]);
 
-  const fetchItems = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const { data: mediaList } = await dataClient.models.Media.list({
-        filter: { tripId: { eq: activeTripId } },
-      });
-      const withUrls: MediaItem[] = [];
-      for (const m of mediaList ?? []) {
+  const loadRawList = useCallback(
+    async (bypassCache = false) => {
+      setLoading(true);
+      setError(null);
+      const cacheKey = `${LIST_CACHE_KEY_PREFIX}${activeTripId}`;
+      if (!bypassCache && typeof sessionStorage !== 'undefined') {
         try {
-          const { url } = await getUrl({ path: m.storagePath, options: { expiresIn: URL_EXPIRES_IN } });
-          withUrls.push({
-            id: m.id,
-            path: m.storagePath,
-            url: url.toString(),
-            uploadedBy: m.uploadedBy,
-            uploadedByUsername: m.uploadedByUsername ?? null,
-          });
+          const raw = sessionStorage.getItem(cacheKey);
+          if (raw) {
+            const { at, list } = JSON.parse(raw) as { at: number; list: MediaItem[] };
+            if (Date.now() - at < LIST_CACHE_TTL_MS && Array.isArray(list)) {
+              setRawList(list);
+              setUrlMap({});
+              setDisplayedCount(INITIAL_DISPLAY_COUNT);
+              setLastRefreshedAt(new Date(at));
+              setLoading(false);
+              return;
+            }
+          }
         } catch {
-          // skip
+          // ignore cache parse errors
         }
       }
-      setItems(withUrls);
-      setLastRefreshedAt(new Date());
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load gallery');
-      setItems([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [activeTripId]);
+      try {
+        const { data: mediaList } = await dataClient.models.Media.list({
+          filter: { tripId: { eq: activeTripId } },
+        });
+        const list = (mediaList ?? []).map((m) => ({
+          id: m.id,
+          path: m.storagePath,
+          uploadedBy: m.uploadedBy,
+          uploadedByUsername: m.uploadedByUsername ?? null,
+          lat: m.lat ?? null,
+          lng: m.lng ?? null,
+          timestamp: m.timestamp ?? null,
+        }));
+        setRawList(list);
+        setUrlMap({});
+        setDisplayedCount(INITIAL_DISPLAY_COUNT);
+        setLastRefreshedAt(new Date());
+        if (typeof sessionStorage !== 'undefined') {
+          try {
+            sessionStorage.setItem(cacheKey, JSON.stringify({ at: Date.now(), list }));
+          } catch {
+            // ignore
+          }
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load gallery');
+        setRawList([]);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [activeTripId]
+  );
 
   useEffect(() => {
-    fetchItems();
-  }, [fetchItems, refreshTrigger]);
+    loadRawList(refreshTrigger > 0);
+  }, [loadRawList, refreshTrigger]);
+
+  // Fetch signed URLs only for currently displayed range
+  useEffect(() => {
+    const sorted = sortMediaItems(rawList, sortOption);
+    const idsToLoad = sorted
+      .slice(0, displayedCount)
+      .map((m) => m.id)
+      .filter((id) => !urlMap[id]);
+    if (idsToLoad.length === 0) {
+      setLoadingMoreUrls(false);
+      return;
+    }
+    setLoadingMoreUrls(true);
+    Promise.all(
+      idsToLoad.map(async (id) => {
+        const m = rawList.find((x) => x.id === id);
+        if (!m) return null;
+        try {
+          const { url } = await getUrl({ path: m.path, options: { expiresIn: URL_EXPIRES_IN } });
+          return { id, url: url.toString() };
+        } catch {
+          return null;
+        }
+      })
+    ).then((results) => {
+      setUrlMap((prev) => {
+        const next = { ...prev };
+        results.forEach((r) => {
+          if (r) next[r.id] = r.url;
+        });
+        return next;
+      });
+      setLoadingMoreUrls(false);
+    });
+  }, [rawList, sortOption, displayedCount]); // urlMap omitted to avoid loop; we only need to load missing ids
 
   const handleRefresh = useCallback(() => {
     setRefreshButtonLabel('Refreshing…');
-    fetchItems().finally(() => setRefreshButtonLabel('Refresh'));
-  }, [fetchItems]);
+    if (typeof sessionStorage !== 'undefined') {
+      try {
+        sessionStorage.removeItem(`${LIST_CACHE_KEY_PREFIX}${activeTripId}`);
+      } catch {
+        // ignore
+      }
+    }
+    loadRawList(true).finally(() => setRefreshButtonLabel('Refresh'));
+  }, [loadRawList, activeTripId]);
+
+  const loadMore = useCallback(() => {
+    setDisplayedCount((n) => Math.min(n + LOAD_MORE_COUNT, rawList.length));
+  }, [rawList.length]);
 
   const openLightbox = useCallback((item: MediaItem) => setLightboxItem(item), []);
   const closeLightbox = useCallback(() => setLightboxItem(null), []);
 
   const handleDownload = useCallback(async (item: MediaItem) => {
-    if (!item.url) return;
     setDownloadingId(item.id);
     try {
-      const res = await fetch(item.url, { mode: 'cors' });
+      let url = item.url;
+      if (!url) {
+        const { url: signedUrl } = await getUrl({
+          path: item.path,
+          options: { expiresIn: URL_EXPIRES_IN },
+        });
+        url = signedUrl.toString();
+      }
+      const res = await fetch(url, { mode: 'cors' });
       if (!res.ok) throw new Error('Download failed');
       const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
+      const objectUrl = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url;
+      a.href = objectUrl;
       a.download = downloadFilename(item);
       a.rel = 'noopener';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      URL.revokeObjectURL(objectUrl);
     } catch {
-      window.open(item.url, '_blank', 'noopener,noreferrer');
+      if (item.url) window.open(item.url, '_blank', 'noopener,noreferrer');
     } finally {
       setDownloadingId(null);
     }
@@ -288,13 +594,13 @@ export default function MediaGallery({ activeTripId, activeTrip, userId, refresh
   }, []);
 
   const selectAll = useCallback(() => {
-    setSelectedIds(new Set(items.map((i) => i.id)));
-  }, [items]);
+    setSelectedIds(new Set(displayedItems.map((i) => i.id)));
+  }, [displayedItems]);
 
   const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
 
   const handleDownloadSelected = useCallback(async () => {
-    const toDownload = items.filter((i) => selectedIds.has(i.id) && i.url);
+    const toDownload = displayedItems.filter((i) => selectedIds.has(i.id) && i.url);
     if (toDownload.length === 0) return;
     setDownloadingMultiple(true);
     for (let i = 0; i < toDownload.length; i++) {
@@ -303,9 +609,9 @@ export default function MediaGallery({ activeTripId, activeTrip, userId, refresh
     }
     setSelectedIds(new Set());
     setDownloadingMultiple(false);
-  }, [items, selectedIds, handleDownload]);
+  }, [displayedItems, selectedIds, handleDownload]);
 
-  if (loading && items.length === 0) {
+  if (loading && rawList.length === 0) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center">
         <div className="h-12 w-12 animate-pulse rounded-2xl bg-blue-100" />
@@ -322,10 +628,19 @@ export default function MediaGallery({ activeTripId, activeTrip, userId, refresh
     );
   }
 
-  if (items.length === 0) {
+  if (rawList.length === 0) {
     return (
       <div className="space-y-6">
-        <GalleryToolbar lastRefreshedAt={lastRefreshedAt} onRefresh={handleRefresh} refreshLabel={refreshButtonLabel} loading={loading} />
+        <GalleryToolbar
+          lastRefreshedAt={lastRefreshedAt}
+          onRefresh={handleRefresh}
+          refreshLabel={refreshButtonLabel}
+          loading={loading}
+          viewMode={viewMode}
+          onSwitchView={switchView}
+          sortOption={sortOption}
+          onSortChange={setSortOption}
+        />
         <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-12 text-center">
           <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-100 text-3xl">📷</div>
           <p className="text-lg font-semibold text-slate-900">No photos or videos yet</p>
@@ -335,6 +650,83 @@ export default function MediaGallery({ activeTripId, activeTrip, userId, refresh
     );
   }
 
+  const metadataTable = (
+    <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <table className="w-full min-w-[640px] text-left text-sm">
+        <thead>
+          <tr className="border-b border-slate-200 bg-slate-50">
+            <th className="px-4 py-3 font-semibold text-slate-700">File</th>
+            <th className="px-4 py-3 font-semibold text-slate-700">Uploaded by</th>
+            <th className="px-4 py-3 font-semibold text-slate-700">Lat</th>
+            <th className="px-4 py-3 font-semibold text-slate-700">Lng</th>
+            <th className="px-4 py-3 font-semibold text-slate-700">Timestamp</th>
+            <th className="px-4 py-3 font-semibold text-slate-700">Metadata</th>
+            <th className="px-4 py-3 font-semibold text-slate-700">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {sortedList.map((item) => {
+            const filename = item.path.split('/').pop() ?? item.path;
+            const hasLocation = item.lat != null && item.lng != null;
+            const hasTimestamp = item.timestamp != null && item.timestamp !== '';
+            const hasAny = hasLocation || hasTimestamp;
+            const itemCanDelete = canDelete(item);
+            return (
+              <tr key={item.id} className="border-b border-slate-100 last:border-0">
+                <td className="px-4 py-3 font-mono text-slate-800">{filename}</td>
+                <td className="px-4 py-3 text-slate-600">{item.uploadedByUsername ?? '—'}</td>
+                <td className="px-4 py-3 font-mono text-slate-600">{item.lat != null ? item.lat.toFixed(5) : '—'}</td>
+                <td className="px-4 py-3 font-mono text-slate-600">{item.lng != null ? item.lng.toFixed(5) : '—'}</td>
+                <td className="px-4 py-3 text-slate-600">{item.timestamp ?? '—'}</td>
+                <td className="px-4 py-3">
+                  {hasAny ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-800">
+                      ✓ {hasLocation && hasTimestamp ? 'Location + date' : hasLocation ? 'Location' : 'Date'}
+                    </span>
+                  ) : (
+                    <span className="inline-flex rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">Missing</span>
+                  )}
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleDownload(item)}
+                      disabled={downloadingId === item.id}
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+                      aria-label="Download"
+                    >
+                      {downloadingId === item.id ? (
+                        <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-400 border-t-transparent" />
+                      ) : (
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                      )}
+                    </button>
+                    {itemCanDelete && (
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(item)}
+                        disabled={deletingId === item.id}
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-red-600 hover:bg-red-50 disabled:opacity-50"
+                        aria-label="Delete"
+                      >
+                        {deletingId === item.id ? (
+                          <span className="h-4 w-4 animate-spin rounded-full border-2 border-red-400 border-t-transparent" />
+                        ) : (
+                          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        )}
+                      </button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+
   return (
     <>
       <GalleryToolbar
@@ -342,102 +734,61 @@ export default function MediaGallery({ activeTripId, activeTrip, userId, refresh
         onRefresh={handleRefresh}
         refreshLabel={refreshButtonLabel}
         loading={loading}
-        selectMode={selectMode}
-        onToggleSelectMode={toggleSelectMode}
-        selectedCount={selectedIds.size}
-        onSelectAll={selectAll}
-        onClearSelection={clearSelection}
-        onDownloadSelected={handleDownloadSelected}
-        downloadingMultiple={downloadingMultiple}
+        viewMode={viewMode}
+        onSwitchView={switchView}
+        sortOption={sortOption}
+        onSortChange={setSortOption}
+        selectMode={viewMode === 'grid' ? selectMode : undefined}
+        onToggleSelectMode={viewMode === 'grid' ? toggleSelectMode : undefined}
+        selectedCount={viewMode === 'grid' ? selectedIds.size : undefined}
+        onSelectAll={viewMode === 'grid' ? selectAll : undefined}
+        onClearSelection={viewMode === 'grid' ? clearSelection : undefined}
+        onDownloadSelected={viewMode === 'grid' ? handleDownloadSelected : undefined}
+        downloadingMultiple={viewMode === 'grid' ? downloadingMultiple : undefined}
       />
-      <div className="columns-2 gap-5 pb-24 pt-2 md:columns-3 lg:columns-4 lg:gap-6">
-        {items.map((item) => {
-          const selected = selectedIds.has(item.id);
-          return (
-            <div
-              key={item.id}
-              className="group relative mb-5 block w-full break-inside-avoid lg:mb-6"
-            >
+      {viewMode === 'metadata' ? (
+        <div className="pb-24 pt-2">{metadataTable}</div>
+      ) : (
+        <>
+          <div className="columns-2 gap-5 pb-6 pt-2 md:columns-3 lg:columns-4 lg:gap-6">
+            {displayedItems.map((item) => (
+              <GalleryCard
+                key={item.id}
+                item={item}
+                selected={selectedIds.has(item.id)}
+                selectMode={selectMode}
+                downloadingId={downloadingId}
+                deletingId={deletingId}
+                canDelete={canDelete(item)}
+                onCardClick={openLightbox}
+                onToggleSelection={toggleSelection}
+                onDownload={handleDownload}
+                onDelete={handleDelete}
+              />
+            ))}
+          </div>
+          {displayedCount < rawList.length && (
+            <div className="flex justify-center pb-24 pt-4">
               <button
                 type="button"
-                onClick={() => (selectMode ? toggleSelection(item.id) : openLightbox(item))}
-                className={`block w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 ${selectMode && selected ? 'ring-2 ring-blue-600 ring-offset-2' : ''}`}
+                onClick={loadMore}
+                disabled={loadingMoreUrls}
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-6 py-3 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-60"
               >
-                <div className="relative rounded-2xl border border-slate-200 bg-white shadow-sm transition-shadow duration-200 group-hover:shadow-md">
-                  {/* In-flow sizer so the card has height (masonry); invisible so only the layered media shows */}
-                  {item.url && isImage(item.path) && (
-                    <img src={item.url} alt="" className="w-full object-cover align-top opacity-0 pointer-events-none" aria-hidden />
-                  )}
-                  {item.url && isVideo(item.path) && (
-                    <div className="aspect-video w-full" aria-hidden />
-                  )}
-                  {item.url && !isImage(item.path) && !isVideo(item.path) && (
-                    <div className="aspect-square w-full" aria-hidden />
-                  )}
-                  {/* Media in its own layer (z-0) so overlay + tooltip always sit on top */}
-                  <div className="absolute inset-0 z-0 overflow-hidden rounded-2xl">
-                    {item.url && isImage(item.path) && (
-                      <img src={item.url} alt="" className="h-full w-full object-cover align-top transition-transform duration-200 group-hover:scale-[1.02]" />
-                    )}
-                    {item.url && isVideo(item.path) && (
-                      <video src={item.url} className="h-full w-full object-cover align-top transition-transform duration-200 group-hover:scale-[1.02]" muted playsInline preload="metadata" />
-                    )}
-                    {item.url && !isImage(item.path) && !isVideo(item.path) && (
-                      <div className="flex aspect-square w-full items-center justify-center bg-slate-100 text-4xl">📎</div>
-                    )}
-                  </div>
-                  {selectMode && (
-                    <div className="absolute left-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-lg bg-slate-900/70 text-white" aria-hidden>
-                      {selected ? (
-                        <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
-                      ) : (
-                        <div className="h-5 w-5 rounded border-2 border-white" />
-                      )}
-                    </div>
-                  )}
-                  {!selectMode && (
-                    <div className="absolute bottom-2 left-2 z-10" onClick={(e) => e.stopPropagation()}>
-                      <UploaderAvatar username={item.uploadedByUsername} />
-                    </div>
-                  )}
-                  {!selectMode && (
-                    <div className="absolute right-2 top-2 z-10 flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        type="button"
-                        onClick={() => handleDownload(item)}
-                        disabled={downloadingId === item.id}
-                        className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-900/70 text-white shadow hover:bg-slate-800/80 disabled:opacity-50"
-                        aria-label="Download"
-                      >
-                        {downloadingId === item.id ? (
-                          <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                        ) : (
-                          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                        )}
-                      </button>
-                      {canDelete(item) && (
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(item)}
-                          disabled={deletingId === item.id}
-                          className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-900/70 text-white shadow hover:bg-slate-800/80 disabled:opacity-50"
-                          aria-label="Delete"
-                        >
-                          {deletingId === item.id ? (
-                            <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                          ) : (
-                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                          )}
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
+                {loadingMoreUrls ? (
+                  <>
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-400 border-t-transparent" />
+                    Loading…
+                  </>
+                ) : (
+                  `Load more (${rawList.length - displayedCount} remaining)`
+                )}
               </button>
             </div>
-          );
-        })}
-      </div>
+          )}
+          {displayedCount >= rawList.length && rawList.length > 0 && <div className="pb-24" />}
+        </>
+      )}
       {lightboxItem?.url && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 p-4 backdrop-blur-sm" onClick={closeLightbox}>
           <div className="relative flex max-h-full max-w-full items-center justify-center" onClick={(e) => e.stopPropagation()}>

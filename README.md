@@ -1,6 +1,16 @@
 # TripWrapped
 
-Shared trip photo/video galleries. Sign in (Google or email), create or join trips by code, upload media, view gallery. Next.js 16 (App Router) + AWS Amplify Gen 2.
+Shared trip photo/video galleries. Sign in (Google or email), create or join trips by code, upload media, view gallery and a trip map. Next.js 16 (App Router) + AWS Amplify Gen 2.
+
+---
+
+## Quick start
+
+1. **Install and run backend** (separate terminal): `npm install` then `npm run sandbox`. Requires AWS CLI.
+2. **Copy config:** `cp .amplify/artifacts/amplify_outputs.json ./`
+3. **Run app:** `npm run dev` → [http://localhost:3000](http://localhost:3000)
+
+**Deploy:** Push to `main` to trigger AWS Amplify Hosting build. Ensure `amplify_outputs.json` is at root (committed or injected via `NEXT_PUBLIC_AMPLIFY_OUTPUTS`) and that `package-lock.json` is committed when deps change.
 
 ---
 
@@ -14,10 +24,10 @@ Shared trip photo/video galleries. Sign in (Google or email), create or join tri
 
 ## Stack
 
-| Layer   | Tech |
-|---------|------|
+| Layer    | Tech |
+|----------|------|
 | Frontend | Next.js 16 (App Router), React 19, Tailwind 4 |
-| Backend | AWS Amplify Gen 2 — Auth (Cognito), Data (AppSync/DynamoDB), Storage (S3) |
+| Backend  | AWS Amplify Gen 2 — Auth (Cognito), Data (AppSync/DynamoDB), Storage (S3) |
 
 ---
 
@@ -29,17 +39,19 @@ src/
     layout.tsx          # Root layout, font, ClientLayout
     page.tsx            # / — upload
     gallery/page.tsx    # /gallery
+    wrap-it-up/page.tsx # Trip map (Mapbox)
     trips/page.tsx      # /trips
     profile/page.tsx    # /profile
     globals.css
   components/
     ClientLayout.tsx    # Wraps children with Navbar, ConfigureAmplify
     ConfigureAmplify.tsx # Amplify.configure(outputs); single entry for config
-    Navbar.tsx
-    MediaUpload.tsx     # Upload UI, S3 + Media create
-    MediaGallery.tsx    # Gallery grid, lightbox, download, delete
+    Navbar.tsx          # Logo (public/login-videos/Icon.png) + TripWrapped, nav links
+    MediaUpload.tsx     # Upload UI, S3 + Media create (EXIF/video metadata)
+    MediaGallery.tsx    # Grid + metadata view, sort, load more, list cache, download/delete
     UploadModal.tsx
     TripSelector.tsx
+    TripMap.tsx         # Mapbox Standard, 3D terrain, photo markers, travel path, Start tour
     SetUsernamePrompt.tsx
     LoginVideoBackground.tsx
     LoadingSpinner.tsx
@@ -61,40 +73,35 @@ amplify/
 
 ## Commands
 
-| Command | Purpose |
-|---------|--------|
-| `npm install` | Install deps |
-| `npm run sandbox` | Start Amplify backend (needs AWS CLI; separate terminal) |
-| `npm run dev` | Next dev server (after copying `amplify_outputs.json` to root) |
-| `npm run build` | Production build |
-| `npm run lint` | ESLint |
+| Command           | Purpose |
+|-------------------|--------|
+| `npm install`     | Install deps (use after clone or when lockfile changes). |
+| `npm run sandbox` | Start Amplify backend (AWS CLI; separate terminal). |
+| `npm run dev`     | Next dev server (after `amplify_outputs.json` at root). |
+| `npm run build`   | Production build. |
+| `npm run lint`    | ESLint. |
 
 ---
 
-## Local vs production: one workflow that works for both
+## Local vs production
 
-**Idea:** Use the same lockfile for local and Amplify. Amplify runs `npm ci` (strict); local uses `npm install` (respects the lockfile). Keep the lockfile committed and in sync so both environments get identical dependency trees.
-
-| Do this | Why |
-|--------|-----|
-| **Always commit `package-lock.json`** when you change `package.json` or add/remove deps. | Amplify runs `npm ci`, which fails if the lockfile is missing or out of sync. |
-| **Local: use `npm install`** (not `npm ci`) for day-to-day installs. | Matches what the lockfile expects and avoids strict sync errors while developing. |
-| **After changing deps:** run `npm install`, then commit both `package.json` and `package-lock.json`. | So the next Amplify build has everything it needs. |
-| **If local is broken** (e.g. `next` not found, weird module errors): run `rm -rf node_modules && npm install`. | Cleans a bad or partial install; reinstalls from the lockfile. |
-| **Optional:** Use the same Node version as Amplify (e.g. set in Amplify build settings; use `.nvmrc` or `engines` locally). | Reduces lockfile differences between local and CI. |
-
-**Config (same for both):** One `amplify_outputs.json` at repo root. Local: copy from sandbox (`cp .amplify/artifacts/amplify_outputs.json ./`). Production: commit that file at root or set `NEXT_PUBLIC_AMPLIFY_OUTPUTS` in Amplify Hosting build env.
+- **One lockfile:** Commit `package-lock.json` whenever you change deps so Amplify’s `npm ci` succeeds. Use `npm install` locally (not `npm ci`) for day-to-day installs.
+- **Broken local install:** Run `rm -rf node_modules && npm install`.
+- **Config:** One `amplify_outputs.json` at repo root. Local: copy from sandbox (`cp .amplify/artifacts/amplify_outputs.json ./`). Production: commit at root or set `NEXT_PUBLIC_AMPLIFY_OUTPUTS` in Amplify Hosting.
 
 ---
 
 ## Routes
 
-| Path | Role |
-|------|------|
-| `/` | Upload: trip selector, multi-file upload, recent list, delete |
-| `/gallery` | Masonry grid, lightbox (click), hover avatar for uploader name, download / select-download, delete by policy |
-| `/trips` | Create or join by code, set active trip, trip settings (e.g. who can delete) |
-| `/profile` | Username, manage/leave trips |
+| Path           | Role |
+|----------------|------|
+| `/`            | Upload: trip selector, multi-file upload, recent list, delete. |
+| `/gallery`     | Masonry grid (load more), metadata table view, sort (date/type/user), lightbox, download/delete in both views. |
+| `/wrap-it-up`  | Map (Mapbox Standard, 3D terrain): photo markers, travel path, Start tour with time-based lighting. |
+| `/trips`       | Create or join by code, set active trip, trip settings (e.g. who can delete). |
+| `/profile`     | Username, manage/leave trips. |
+
+**Wrap It Up:** Requires `NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN` in `.env.local` (or in Amplify Hosting env). Get a token at [mapbox.com](https://account.mapbox.com/access-tokens/).
 
 ---
 

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 
 type NavbarProps = {
@@ -11,6 +12,7 @@ type NavbarProps = {
 const navLinks = [
   { href: '/', label: 'Upload', icon: 'upload' },
   { href: '/gallery', label: 'Gallery', icon: 'gallery' },
+  { href: '/wrap-it-up', label: 'Wrap It Up', icon: 'map' },
   { href: '/trips', label: 'Trips', icon: 'trips' },
   { href: '/profile', label: 'Profile', icon: 'profile' },
 ];
@@ -42,6 +44,12 @@ function NavIcon({ icon }: { icon: string }) {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
         </svg>
       );
+    case 'map':
+      return (
+        <svg className={c} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+        </svg>
+      );
     default:
       return null;
   }
@@ -59,9 +67,16 @@ export default function Navbar({ signOut, isMobile = false }: NavbarProps) {
         <nav className="mx-auto flex h-14 min-h-[44px] max-w-6xl items-center justify-between px-4 sm:h-16 sm:px-6">
           <Link
             href="/"
-            className="text-lg font-bold tracking-tight text-slate-900 sm:text-xl"
+            className="flex items-center gap-2 text-lg font-bold tracking-tight text-slate-900 sm:text-xl"
             aria-label="TripWrapped home"
           >
+            <Image
+              src="/login-videos/Icon.png"
+              alt=""
+              width={32}
+              height={32}
+              className="h-8 w-8 flex-shrink-0 sm:h-9 sm:w-9"
+            />
             TripWrapped
           </Link>
           {showDesktopNav && (

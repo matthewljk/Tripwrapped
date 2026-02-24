@@ -49,18 +49,18 @@ function getVideoDuration(file: File): Promise<number> {
   });
 }
 
-async function extractImageMetadata(file: File): Promise<ExtractedMetadata> {
+async function extractMediaMetadata(file: File): Promise<ExtractedMetadata> {
   const result: ExtractedMetadata = { lat: null, lng: null, timestamp: null };
   try {
-    const [gps, exif] = await Promise.all([
+    const [gps, parsed] = await Promise.all([
       exifr.gps(file).catch(() => null),
-      exifr.parse(file, { pick: ['DateTimeOriginal', 'CreateDate'] }).catch(() => null),
+      exifr.parse(file, { pick: ['DateTimeOriginal', 'CreateDate', 'ModifyDate'] }).catch(() => null),
     ]);
     if (gps && typeof gps.latitude === 'number' && typeof gps.longitude === 'number') {
       result.lat = gps.latitude;
       result.lng = gps.longitude;
     }
-    const dateValue = exif?.DateTimeOriginal ?? exif?.CreateDate;
+    const dateValue = parsed?.DateTimeOriginal ?? parsed?.CreateDate ?? parsed?.ModifyDate;
     if (dateValue instanceof Date && !Number.isNaN(dateValue.getTime())) {
       result.timestamp = dateValue.toISOString();
     }
@@ -161,7 +161,7 @@ export default function MediaUpload({ activeTripId, onSuccess }: MediaUploadProp
             continue;
           }
         }
-        const metadata: ExtractedMetadata = isImage ? await extractImageMetadata(file) : { lat: null, lng: null, timestamp: null };
+        const metadata: ExtractedMetadata = await extractMediaMetadata(file);
         valid.push({ file, metadata });
       }
 

@@ -15,9 +15,11 @@
     "aws-amplify": "^6.16.2",
     "browser-image-compression": "^2.0.2",
     "exifr": "^7.1.3",
+    "mapbox-gl": "^3.18.1",
     "next": "16.1.6",
     "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "react-map-gl": "^8.1.0"
   },
   "overrides": {
     "@aws-amplify/plugin-types": "1.11.2"
