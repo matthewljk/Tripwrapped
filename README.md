@@ -96,6 +96,10 @@ amplify/
 
 **Deployed app can't see metadata but local can:** Production talks to the production backend. Deploy that backend with the current schema, set hosting's `NEXT_PUBLIC_AMPLIFY_OUTPUTS` to its outputs, and redeploy the frontend. New uploads will then have metadata; existing production records may need re-upload.
 
+**Production from Console only:** The repo has `amplify.yml` so each build deploys the backend then the frontend. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in Amplify Console for the branch; then trigger a build (push to main or Redeploy). No local terminal needed.
+
+**Metadata not saved on upload in production:** The app sends lat/lng/timestamp when creating each Media record. If the production backend was deployed before the `Media` model had these fields, they won't be stored. Fix: deploy the production backend with the current schema (see "How to sync both backends" above). After that, new uploads will persist metadata. No frontend change required.
+
 ---
 
 ## Routes
