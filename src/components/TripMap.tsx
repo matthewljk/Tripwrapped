@@ -349,7 +349,9 @@ export default function TripMap({
 
     map.on('moveend', onMoveEnd);
     onMoveEnd();
-    return () => map.off('moveend', onMoveEnd);
+    return () => {
+      map.off('moveend', onMoveEnd);
+    };
   }, [mapReady, sortedByTime]);
 
   const initialCenter =
