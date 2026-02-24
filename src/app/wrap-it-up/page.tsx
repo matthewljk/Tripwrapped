@@ -29,7 +29,16 @@ export default function WrapItUpPage() {
       <div className="flex min-h-dscreen-half flex-col items-center justify-center bg-slate-50 px-4 py-16 safe-area-padding">
         <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
           <h2 className="text-2xl font-bold tracking-tight text-slate-900">Map not configured</h2>
-          <p className="mt-3 text-slate-600">Set <code className="rounded bg-slate-100 px-1.5 py-0.5 text-sm">NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN</code> in <code className="rounded bg-slate-100 px-1.5 py-0.5 text-sm">.env.local</code> to show the trip map.</p>
+          <p className="mt-3 text-slate-600">
+            Add your Mapbox token so the trip map can load.
+          </p>
+          <ul className="mt-3 list-inside list-disc space-y-1 text-sm text-slate-600">
+            <li><strong>Local:</strong> In the project root, create or edit <code className="rounded bg-slate-100 px-1 py-0.5">.env.local</code> with <code className="rounded bg-slate-100 px-1 py-0.5">NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN=pk.eyJ...</code></li>
+            <li><strong>Amplify (production):</strong> In Amplify Console → App → Environment variables, add <code className="rounded bg-slate-100 px-1 py-0.5">NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN</code> and redeploy.</li>
+          </ul>
+          <p className="mt-3 text-sm text-slate-500">
+            Get a token at <a href="https://account.mapbox.com/access-tokens/" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">account.mapbox.com/access-tokens</a>.
+          </p>
         </div>
       </div>
     );

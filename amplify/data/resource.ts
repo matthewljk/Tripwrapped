@@ -2,6 +2,8 @@ import { type ClientSchema, a, defineData, defineFunction } from '@aws-amplify/b
 
 const deleteTripMediaHandler = defineFunction({
   entry: './delete-media-handler/handler.ts',
+  memoryMB: 128,
+  timeoutSeconds: 15,
 });
 
 const schema = a.schema({

@@ -60,7 +60,7 @@ src/
     useUserProfile.ts
     useIsMobile.ts
 amplify/
-  backend.ts
+  backend.ts            # DynamoDB on-demand billing (pay-per-request, hobby-friendly)
   auth/resource.ts
   data/resource.ts      # Schema (Trip, TripMember, Media, UserPreference, UserProfile), deleteTripMedia
   data/delete-media-handler/handler.ts
@@ -87,7 +87,14 @@ amplify/
 
 - **One lockfile:** Commit `package-lock.json` whenever you change deps so Amplify’s `npm ci` succeeds. Use `npm install` locally (not `npm ci`) for day-to-day installs.
 - **Broken local install:** Run `rm -rf node_modules && npm install`.
-- **Config:** One `amplify_outputs.json` at repo root. Local: copy from sandbox (`cp .amplify/artifacts/amplify_outputs.json ./`). Production: commit at root or set `NEXT_PUBLIC_AMPLIFY_OUTPUTS` in Amplify Hosting.
+- **Config:** Local uses `amplify_outputs.json` at repo root (copy from sandbox: `cp .amplify/artifacts/amplify_outputs.json ./`). Production uses a **different** backend: set `NEXT_PUBLIC_AMPLIFY_OUTPUTS` in Amplify Hosting to the stringified JSON from the production backend.
+- **Backend cost:** DynamoDB is set to on-demand (pay-per-request) and the delete-media Lambda uses minimal memory; suitable for hobby use.
+
+**Two backends:** Local and production use **different** Amplify backends (e.g. sandbox vs pipeline-deployed). When you change the schema, deploy the production backend too so both have the same models (e.g. `Media` with `lat`, `lng`, `timestamp`).
+
+**How to sync both backends:** The schema in `amplify/` is the single source of truth. (1) **Sandbox (local):** run `npm run sandbox` so the local backend has the latest schema; copy `cp .amplify/artifacts/amplify_outputs.json ./` for the Next app. (2) **Production:** push your branch (e.g. `main`) to trigger the Amplify build. If the app is set up for fullstack (backend + frontend), the build deploys the backend for that branch, then the frontend. If only the frontend is deployed by Amplify, deploy the production backend yourself: from the repo run `npx ampx pipeline-deploy --branch <branch> --app-id <AMPLIFY_APP_ID>` (get the app id in Amplify Console → App settings → General). After the backend deploy, run `npx ampx generate outputs --app-id <id> --branch <branch> --out-dir .` to get the new `amplify_outputs.json`, then set `NEXT_PUBLIC_AMPLIFY_OUTPUTS` in Hosting to that file’s stringified contents and redeploy the frontend.
+
+**Deployed app can't see metadata but local can:** Production talks to the production backend. Deploy that backend with the current schema, set hosting's `NEXT_PUBLIC_AMPLIFY_OUTPUTS` to its outputs, and redeploy the frontend. New uploads will then have metadata; existing production records may need re-upload.
 
 ---
 

@@ -480,7 +480,15 @@ export default function MediaGallery({ activeTripId, activeTrip, userId, refresh
           }
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load gallery');
+        const message =
+          err instanceof Error ? err.message : 'Failed to load gallery';
+        setError(
+          message +
+            (typeof window !== 'undefined' &&
+            window.location.hostname !== 'localhost'
+              ? ' (check auth and that the deployed backend is up to date)'
+              : '')
+        );
         setRawList([]);
       } finally {
         setLoading(false);

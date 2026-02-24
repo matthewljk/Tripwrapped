@@ -118,17 +118,29 @@ export default function TripMap({
         } catch {
           // ignore if Standard style not active
         }
-        await new Promise<void>((resolve, reject) => {
+        await new Promise<void>((resolve) => {
           map.flyTo({
             center: [photo.lng, photo.lat],
             zoom: 15,
             pitch: 60,
+            bearing: 20,
             duration: 3000,
             essential: true,
           });
           map.once('moveend', () => resolve());
           setTimeout(() => resolve(), 3200);
         });
+        // Pop effect: scale marker 1 → 1.5 over 500ms on arrival
+        const markerEl = document.querySelector(
+          `.trip-map-marker[data-marker-id="${photo.id}"]`
+        ) as HTMLElement | null;
+        if (markerEl) {
+          markerEl.style.transition = 'transform 500ms ease-out';
+          markerEl.style.transform = 'scale(1.5)';
+          setTimeout(() => {
+            markerEl.style.transform = 'scale(1)';
+          }, 500);
+        }
       }
     } finally {
       setTourRunning(false);
@@ -151,7 +163,28 @@ export default function TripMap({
       const mapboxgl = (await import('mapbox-gl')).default;
       map.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
-      // 1) Dynamic lighting from local time
+      // 1) Atmosphere: basemap theme ('warm' if supported; else fallback to 'faded')
+      try {
+        map.setConfigProperty('basemap', 'theme', 'warm');
+      } catch {
+        try {
+          map.setConfigProperty('basemap', 'theme', 'faded');
+        } catch {
+          // ignore if Standard style not active
+        }
+      }
+      // 2) Fog for depth
+      try {
+        map.setFog({
+          range: [0.8, 8],
+          color: '#dc9f9f',
+          'high-color': '#245cdf',
+          'space-color': 'white',
+        });
+      } catch {
+        // ignore if style doesn't support fog
+      }
+      // 3) Dynamic lighting from local time (dawn / day / dusk / night)
       const preset = getLightPresetForLocalTime();
       try {
         map.setConfigProperty('basemap', 'lightPreset', preset);
@@ -159,7 +192,7 @@ export default function TripMap({
         // Standard style may not support it
       }
 
-      // 2) 3D Terrain (mapbox-dem)
+      // 4) 3D Terrain (mapbox-dem)
       try {
         if (!map.getSource('mapbox-dem')) {
           map.addSource('mapbox-dem', {
@@ -220,7 +253,7 @@ export default function TripMap({
             paint: {
               'line-color': PATH_COLOR,
               'line-width': 4,
-              'line-blur': 0.5,
+              'line-blur': 2,
             },
           });
         }
@@ -365,6 +398,7 @@ export default function TripMap({
     <div className="relative h-full w-full">
       <Map
         mapboxAccessToken={mapboxAccessToken}
+        cooperativeGestures
         initialViewState={{
           longitude: initialCenter[0],
           latitude: initialCenter[1],
