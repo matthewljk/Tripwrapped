@@ -465,7 +465,7 @@ export default function DailyCard({
                 {(
                   Object.keys(expenseByCategoryByCurrency).length > 0
                     ? Object.entries(expenseByCategoryByCurrency)
-                    : Object.entries(expenseByCategory).map(([catId, amt]) => [catId, { [baseCurrency]: amt }])
+                    : Object.entries(expenseByCategory).map(([catId, amt]) => [catId, { [baseCurrency]: amt }] as [string, Record<string, number>])
                 )
                   .sort(([, amountsA], [, amountsB]) => {
                     const sumA = Object.values(amountsA).reduce((s, v) => s + v, 0);
@@ -473,7 +473,7 @@ export default function DailyCard({
                     return sumB - sumA;
                   })
                   .map(([catId, amounts]) => (
-                    <li key={catId} className="flex justify-between gap-2">
+                    <li key={String(catId)} className="flex justify-between gap-2">
                       <span>{getCategoryLabel(catId)}</span>
                       <span className="font-medium text-slate-800 text-right">
                         {Object.entries(amounts)
