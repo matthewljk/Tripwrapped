@@ -13,11 +13,31 @@ const schema = a.schema({
       name: a.string(),
       allowAnyMemberToDelete: a.boolean(),
       startDate: a.string(),
+      baseCurrency: a.string(),
+      budgetPerPax: a.float(),
     })
     .secondaryIndexes((index) => [index('tripCode')])
     .authorization((allow) => [
       allow.authenticated().to(['read', 'create']),
       allow.owner().to(['update', 'delete']),
+    ]),
+
+  Transaction: a
+    .model({
+      tripId: a.id().required(),
+      amount: a.float().required(),
+      currency: a.string().required(),
+      description: a.string(),
+      paidBy: a.string().required(),
+      splitBetween: a.string().array().required(),
+      timestamp: a.string().required(),
+      categoryId: a.string(),
+      customSplitAmountsJson: a.string(),
+    })
+    .secondaryIndexes((index) => [index('tripId')])
+    .authorization((allow) => [
+      allow.authenticated().to(['read', 'create']),
+      allow.ownerDefinedIn('paidBy').to(['update', 'delete']),
     ]),
 
   TripMember: a

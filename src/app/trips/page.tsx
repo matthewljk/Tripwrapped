@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { getCurrentUser } from 'aws-amplify/auth';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../../amplify/data/resource';
@@ -9,11 +9,15 @@ import { useActiveTrip } from '@/hooks/useActiveTrip';
 
 const client = generateClient<Schema>();
 
+const CURRENCIES = ['USD', 'EUR', 'GBP', 'SGD', 'AUD', 'JPY', 'CAD', 'CHF', 'THB', 'MYR', 'IDR', 'PHP', 'VND'];
+
 export default function TripsPage() {
   const { trips, activeTripId, activeTrip, setActiveTripId, loading, hasTrip, refresh } = useActiveTrip();
   const [createCode, setCreateCode] = useState('');
   const [createName, setCreateName] = useState('');
   const [createStartDate, setCreateStartDate] = useState('');
+  const [createBaseCurrency, setCreateBaseCurrency] = useState('USD');
+  const [createBudgetPerPax, setCreateBudgetPerPax] = useState('');
   const [createAllowAnyDelete, setCreateAllowAnyDelete] = useState(false);
   const [joinCode, setJoinCode] = useState('');
   const [createError, setCreateError] = useState<string | null>(null);
@@ -23,6 +27,19 @@ export default function TripsPage() {
   const [createSuccess, setCreateSuccess] = useState(false);
   const [joinSuccess, setJoinSuccess] = useState(false);
   const [settingsBusy, setSettingsBusy] = useState(false);
+  const [settingsSaved, setSettingsSaved] = useState(false);
+  const [settingsBaseCurrency, setSettingsBaseCurrency] = useState('');
+  const [settingsStartDate, setSettingsStartDate] = useState('');
+  const [settingsBudgetPerPax, setSettingsBudgetPerPax] = useState('');
+  const [settingsAllowAnyDelete, setSettingsAllowAnyDelete] = useState(false);
+
+  useEffect(() => {
+    if (!activeTrip) return;
+    setSettingsBaseCurrency(activeTrip.baseCurrency ?? '');
+    setSettingsStartDate(activeTrip.startDate ?? '');
+    setSettingsBudgetPerPax(activeTrip.budgetPerPax != null ? String(activeTrip.budgetPerPax) : '');
+    setSettingsAllowAnyDelete(activeTrip.allowAnyMemberToDelete === true);
+  }, [activeTrip?.id, activeTrip?.baseCurrency, activeTrip?.startDate, activeTrip?.budgetPerPax, activeTrip?.allowAnyMemberToDelete]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,11 +57,14 @@ export default function TripsPage() {
         setCreateError('That code is already taken.');
         return;
       }
+      const budgetVal = createBudgetPerPax.trim() ? parseFloat(createBudgetPerPax) : null;
       const { data: trip } = await client.models.Trip.create({
         tripCode: code,
         name: createName.trim() || null,
         allowAnyMemberToDelete: createAllowAnyDelete,
         startDate: createStartDate.trim() || null,
+        baseCurrency: createBaseCurrency || null,
+        budgetPerPax: budgetVal != null && !Number.isNaN(budgetVal) ? budgetVal : null,
       });
       if (!trip) throw new Error('Create failed');
       const { userId } = await getCurrentUser();
@@ -53,6 +73,8 @@ export default function TripsPage() {
       setCreateCode('');
       setCreateName('');
       setCreateStartDate('');
+      setCreateBaseCurrency('USD');
+      setCreateBudgetPerPax('');
       setCreateSuccess(true);
       refresh();
     } catch (err) {
@@ -131,52 +153,89 @@ export default function TripsPage() {
             <div className="mt-6 border-t border-slate-200 pt-6">
               <p className="text-sm font-semibold text-slate-700">Trip settings</p>
               <div className="mt-3">
+                <label htmlFor="trip-base-currency" className="block text-sm font-medium text-slate-700">Trip currency</label>
+                <p className="mt-0.5 text-xs text-slate-500">Used when adding transactions and for O$P$.</p>
+                <select
+                  id="trip-base-currency"
+                  value={settingsBaseCurrency}
+                  disabled={settingsBusy}
+                  onChange={(e) => setSettingsBaseCurrency(e.target.value)}
+                  className="mt-2 block w-full max-w-xs rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
+                >
+                  <option value="">Select currency</option>
+                  {CURRENCIES.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="mt-4">
                 <label htmlFor="trip-start-date" className="block text-sm font-medium text-slate-700">Trip start date</label>
                 <p className="mt-0.5 text-xs text-slate-500">Used for Daily Journal &quot;Day X&quot;. Optional.</p>
                 <input
                   id="trip-start-date"
                   type="date"
-                  value={activeTrip.startDate ?? ''}
+                  value={settingsStartDate}
                   disabled={settingsBusy}
-                  onChange={async (e) => {
-                    const next = e.target.value.trim() || null;
-                    setSettingsBusy(true);
-                    try {
-                      await client.models.Trip.update({
-                        id: activeTrip.id,
-                        startDate: next,
-                      });
-                      refresh();
-                    } finally {
-                      setSettingsBusy(false);
-                    }
-                  }}
+                  onChange={(e) => setSettingsStartDate(e.target.value)}
+                  className="mt-2 block w-full max-w-xs rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
+                />
+              </div>
+              <div className="mt-4">
+                <label htmlFor="trip-budget-pax" className="block text-sm font-medium text-slate-700">Budget per person</label>
+                <p className="mt-0.5 text-xs text-slate-500">In trip currency. Optional; used for budget % on O$P$.</p>
+                <input
+                  id="trip-budget-pax"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={settingsBudgetPerPax}
+                  onChange={(e) => setSettingsBudgetPerPax(e.target.value)}
+                  placeholder="e.g. 500"
+                  disabled={settingsBusy}
                   className="mt-2 block w-full max-w-xs rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
                 />
               </div>
               <label className="mt-4 flex cursor-pointer items-center gap-3">
                 <input
                   type="checkbox"
-                  checked={activeTrip.allowAnyMemberToDelete}
+                  checked={settingsAllowAnyDelete}
                   disabled={settingsBusy}
-                  onChange={async (e) => {
-                    const next = e.target.checked;
-                    setSettingsBusy(true);
-                    try {
-                      await client.models.Trip.update({
-                        id: activeTrip.id,
-                        allowAnyMemberToDelete: next,
-                      });
-                      refresh();
-                    } finally {
-                      setSettingsBusy(false);
-                    }
-                  }}
+                  onChange={(e) => setSettingsAllowAnyDelete(e.target.checked)}
                   className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-600"
                 />
                 <span className="text-sm text-slate-700">Any trip member can delete photos/videos</span>
               </label>
               <p className="mt-1 text-xs text-slate-500">If off, only the person who uploaded an item can delete it.</p>
+              <div className="mt-5 flex items-center gap-3">
+                <button
+                  type="button"
+                  disabled={settingsBusy}
+                  onClick={async () => {
+                    if (!activeTrip) return;
+                    setSettingsBusy(true);
+                    setSettingsSaved(false);
+                    try {
+                      const budgetVal = settingsBudgetPerPax.trim() ? parseFloat(settingsBudgetPerPax) : null;
+                      await client.models.Trip.update({
+                        id: activeTrip.id,
+                        baseCurrency: settingsBaseCurrency.trim() || null,
+                        startDate: settingsStartDate.trim() || null,
+                        budgetPerPax: budgetVal != null && !Number.isNaN(budgetVal) && budgetVal >= 0 ? budgetVal : null,
+                        allowAnyMemberToDelete: settingsAllowAnyDelete,
+                      });
+                      setSettingsSaved(true);
+                      refresh();
+                      setTimeout(() => setSettingsSaved(false), 2000);
+                    } finally {
+                      setSettingsBusy(false);
+                    }
+                  }}
+                  className="btn-primary"
+                >
+                  {settingsBusy ? 'Saving…' : 'Save settings'}
+                </button>
+                {settingsSaved && <span className="text-sm text-green-600">Saved</span>}
+              </div>
             </div>
           )}
         </section>
@@ -209,6 +268,36 @@ export default function TripsPage() {
           <div>
             <label htmlFor="create-start-date" className="block text-sm font-semibold text-slate-700">Start date <span className="font-normal text-slate-400">(optional)</span></label>
             <input id="create-start-date" type="date" value={createStartDate} onChange={(e) => setCreateStartDate(e.target.value)} className="mt-2 block w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2" disabled={createBusy} />
+          </div>
+          <div>
+            <label htmlFor="create-base-currency" className="block text-sm font-semibold text-slate-700">Trip currency</label>
+            <p className="mt-0.5 text-xs text-slate-500">Default when adding expenses. You can change this later in trip settings.</p>
+            <select
+              id="create-base-currency"
+              value={createBaseCurrency}
+              onChange={(e) => setCreateBaseCurrency(e.target.value)}
+              className="mt-2 block w-full max-w-xs rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
+              disabled={createBusy}
+            >
+              {CURRENCIES.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="create-budget-pax" className="block text-sm font-semibold text-slate-700">Budget per person <span className="font-normal text-slate-400">(optional)</span></label>
+            <p className="mt-0.5 text-xs text-slate-500">In trip currency. Shown on O$P$.</p>
+            <input
+              id="create-budget-pax"
+              type="number"
+              step="0.01"
+              min="0"
+              value={createBudgetPerPax}
+              onChange={(e) => setCreateBudgetPerPax(e.target.value)}
+              placeholder="e.g. 500"
+              disabled={createBusy}
+              className="mt-2 block w-full max-w-xs rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
+            />
           </div>
           <div>
             <label className="flex cursor-pointer items-center gap-3">

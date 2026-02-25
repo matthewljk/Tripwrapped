@@ -10,9 +10,10 @@ type NavbarProps = {
 };
 
 const navLinks = [
-  { href: '/', label: 'Upload', icon: 'upload' },
+  { href: '/', label: 'Add', icon: 'upload' },
   { href: '/gallery', label: 'Gallery', icon: 'gallery' },
   { href: '/journal', label: 'Journal', icon: 'journal' },
+  { href: '/ops', label: 'O$P$', icon: 'money' },
   { href: '/wrap-it-up', label: 'Wrap It Up', icon: 'map' },
   { href: '/trips', label: 'Trips', icon: 'trips' },
   { href: '/profile', label: 'Profile', icon: 'profile' },
@@ -55,6 +56,12 @@ function NavIcon({ icon }: { icon: string }) {
       return (
         <svg className={c} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+        </svg>
+      );
+    case 'money':
+      return (
+        <svg className={c} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
       );
     default:

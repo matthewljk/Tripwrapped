@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getUrl } from 'aws-amplify/storage';
 import type { POICluster } from '@/lib/poiClustering';
 import type { MediaWithLocation } from '@/lib/poiClustering';
+import { getCategoryLabel } from '@/lib/transactionCategories';
 
 const URL_EXPIRES_IN = 3600;
 
@@ -143,6 +144,16 @@ export type DailyCardProps = {
   pois: POICluster[];
   totalCount: number;
   averageRating: number | null;
+  /** Total expense for this day in base currency */
+  totalExpense?: number;
+  /** Expense by category for this day (categoryId -> amount in base currency) */
+  expenseByCategory?: Record<string, number>;
+  /** Per-category amounts in original currencies (categoryId -> currency -> amount) for multi-currency display */
+  expenseByCategoryByCurrency?: Record<string, Record<string, number>>;
+  /** Base currency code for display (e.g. USD) */
+  baseCurrency?: string;
+  /** Number of trip participants (for average per person) */
+  participantCount?: number;
   onSaveReview: (
     mediaIds: string[],
     rating: number | null,
@@ -164,11 +175,17 @@ export default function DailyCard({
   pois,
   totalCount,
   averageRating,
+  totalExpense = 0,
+  expenseByCategory = {},
+  expenseByCategoryByCurrency = {},
+  baseCurrency = 'USD',
+  participantCount = 1,
   onSaveReview,
   onSaveLocationName,
   onClearLocation,
 }: DailyCardProps) {
   const [expandedPoiKey, setExpandedPoiKey] = useState<string | null>(null);
+  const [expenseSummaryExpanded, setExpenseSummaryExpanded] = useState(false);
   const [highlightUrl, setHighlightUrl] = useState<string | null>(null);
   const [highlightFailed, setHighlightFailed] = useState(false);
   const [candidateIndex, setCandidateIndex] = useState(0);
@@ -367,7 +384,7 @@ export default function DailyCard({
           Tap a location to add a rating or correct it
         </p>
 
-        {/* Summary: average stars, locations visited, contributors */}
+        {/* Summary: average stars, locations visited, contributors (same line) */}
         <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-slate-200 pt-4">
           {averageRating != null && averageRating >= 1 && averageRating <= 5 && (
             <span className="text-sm font-medium text-amber-600">★ {averageRating.toFixed(1)} average</span>
@@ -393,6 +410,84 @@ export default function DailyCard({
             </div>
           )}
         </div>
+
+        {/* Expenses: below on its own line(s) */}
+        {(() => {
+          const totalByCurrency: Record<string, number> = {};
+          if (Object.keys(expenseByCategoryByCurrency).length > 0) {
+            for (const catAmounts of Object.values(expenseByCategoryByCurrency)) {
+              for (const [curr, amt] of Object.entries(catAmounts)) {
+                totalByCurrency[curr] = (totalByCurrency[curr] ?? 0) + amt;
+              }
+            }
+          }
+          const hasTotalByCurrency = Object.keys(totalByCurrency).length > 0;
+          const singleCurrency = hasTotalByCurrency && Object.keys(totalByCurrency).length === 1;
+          const showLegacyTotal = totalExpense > 0 && !hasTotalByCurrency;
+          if (!hasTotalByCurrency && !showLegacyTotal) return null;
+          return (
+            <div className="mt-3 text-sm font-medium text-slate-700">
+              <span className="font-medium">Total expense: </span>
+              {hasTotalByCurrency
+                ? Object.entries(totalByCurrency)
+                    .map(([curr, amt]) =>
+                      new Intl.NumberFormat(undefined, { style: 'currency', currency: curr || baseCurrency, minimumFractionDigits: 2 }).format(amt)
+                    )
+                    .join(', ')
+                : new Intl.NumberFormat(undefined, { style: 'currency', currency: baseCurrency, minimumFractionDigits: 2 }).format(totalExpense)}
+              {participantCount > 1 &&
+                (hasTotalByCurrency
+                  ? (singleCurrency
+                      ? ` · ${new Intl.NumberFormat(undefined, { style: 'currency', currency: Object.keys(totalByCurrency)[0], minimumFractionDigits: 2 }).format(Object.values(totalByCurrency)[0]! / participantCount)} per person`
+                      : ` · ${Object.entries(totalByCurrency)
+                          .map(([curr, amt]) =>
+                            new Intl.NumberFormat(undefined, { style: 'currency', currency: curr, minimumFractionDigits: 2 }).format(amt / participantCount)
+                          )
+                          .join(', ')} per person`)
+                  : ` · ${new Intl.NumberFormat(undefined, { style: 'currency', currency: baseCurrency, minimumFractionDigits: 2 }).format(totalExpense / participantCount)} per person`)}
+            </div>
+          );
+        })()}
+
+        {/* Expanded: what the money was spent on (by category, multi-currency) */}
+        {(Object.keys(expenseByCategory).length > 0 || Object.keys(expenseByCategoryByCurrency).length > 0) && (
+          <div className="mt-3 border-t border-slate-100 pt-3">
+            <button
+              type="button"
+              onClick={() => setExpenseSummaryExpanded((e) => !e)}
+              className="flex w-full items-center justify-between text-left text-sm font-medium text-slate-700 hover:text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
+            >
+              <span>What it was spent on</span>
+              <span className={`text-slate-400 transition-transform ${expenseSummaryExpanded ? 'rotate-180' : ''}`}>▼</span>
+            </button>
+            {expenseSummaryExpanded && (
+              <ul className="mt-2 space-y-1 text-sm text-slate-600">
+                {(
+                  Object.keys(expenseByCategoryByCurrency).length > 0
+                    ? Object.entries(expenseByCategoryByCurrency)
+                    : Object.entries(expenseByCategory).map(([catId, amt]) => [catId, { [baseCurrency]: amt }])
+                )
+                  .sort(([, amountsA], [, amountsB]) => {
+                    const sumA = Object.values(amountsA).reduce((s, v) => s + v, 0);
+                    const sumB = Object.values(amountsB).reduce((s, v) => s + v, 0);
+                    return sumB - sumA;
+                  })
+                  .map(([catId, amounts]) => (
+                    <li key={catId} className="flex justify-between gap-2">
+                      <span>{getCategoryLabel(catId)}</span>
+                      <span className="font-medium text-slate-800 text-right">
+                        {Object.entries(amounts)
+                          .map(([curr, amt]) =>
+                            new Intl.NumberFormat(undefined, { style: 'currency', currency: curr || baseCurrency, minimumFractionDigits: 2 }).format(amt)
+                          )
+                          .join(', ')}
+                      </span>
+                    </li>
+                  ))}
+              </ul>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

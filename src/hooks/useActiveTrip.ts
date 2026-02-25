@@ -14,6 +14,8 @@ export type TripWithRole = {
   role: string;
   allowAnyMemberToDelete: boolean;
   startDate: string | null;
+  baseCurrency: string | null;
+  budgetPerPax: number | null;
 };
 
 export function useActiveTrip() {
@@ -59,6 +61,8 @@ export function useActiveTrip() {
                 role: m.role,
                 allowAnyMemberToDelete: trip.allowAnyMemberToDelete === true,
                 startDate: trip.startDate ?? null,
+                baseCurrency: trip.baseCurrency ?? null,
+                budgetPerPax: trip.budgetPerPax ?? null,
               }
             : null;
         })

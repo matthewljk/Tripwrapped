@@ -5,14 +5,21 @@ import { useRouter } from 'next/navigation';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import TripSelector from '@/components/TripSelector';
 import UploadModal from '@/components/UploadModal';
+import TransactionForm from '@/components/TransactionForm';
 import { useActiveTrip } from '@/hooks/useActiveTrip';
 
-export default function UploadPage() {
+export default function AddPage() {
   const router = useRouter();
-  const { activeTripId, hasTrip, loading } = useActiveTrip();
+  const { activeTripId, activeTrip, hasTrip, loading, refresh } = useActiveTrip();
   const [uploadOpen, setUploadOpen] = useState(false);
 
   const handleUploadSuccess = useCallback(() => {}, []);
+  const handleTransactionSuccess = useCallback(() => {}, []);
+
+  // Refetch trip data when Add page is shown so saved trip currency (from Trips) is up to date
+  useEffect(() => {
+    if (hasTrip) refresh();
+  }, [hasTrip, refresh]);
 
   useEffect(() => {
     if (!loading && !hasTrip) router.replace('/trips');
@@ -31,13 +38,40 @@ export default function UploadPage() {
         <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 py-6">
           <TripSelector />
         </div>
-        <section className="py-8 sm:py-12">
-          <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">Upload</h1>
-          <p className="mt-2 text-slate-600">Add photos and videos to your default trip above. Images and short videos (15s or less) only.</p>
-          <button type="button" onClick={() => setUploadOpen(true)} className="btn-primary mt-6 sm:mt-8">Add photo or video</button>
+
+        {/* Section 1: Add photo or video — one click opens upload */}
+        <section className="border-b border-slate-100 py-8 sm:py-10">
+          <h2 className="text-lg font-bold tracking-tight text-slate-900 sm:text-xl">Photo or video</h2>
+          <p className="mt-1 text-slate-600">Add photos and videos to your trip. Images and short videos (15s or less) only.</p>
+          <button
+            type="button"
+            onClick={() => setUploadOpen(true)}
+            className="btn-primary mt-4"
+          >
+            Add photo or video
+          </button>
+        </section>
+
+        {/* Section 2: Add transaction — form shown directly, no menu */}
+        <section className="py-8 sm:py-10">
+          <h2 className="text-lg font-bold tracking-tight text-slate-900 sm:text-xl">Add transaction</h2>
+          <p className="mt-1 text-slate-600">Log an expense and split it with trip members.</p>
+          <div className="mt-6 max-w-xl">
+            <TransactionForm
+              activeTripId={activeTripId}
+              baseCurrency={activeTrip?.baseCurrency ?? null}
+              onSuccess={handleTransactionSuccess}
+            />
+          </div>
         </section>
       </div>
-      <UploadModal isOpen={uploadOpen} onClose={() => setUploadOpen(false)} activeTripId={activeTripId} onSuccess={handleUploadSuccess} />
+
+      <UploadModal
+        isOpen={uploadOpen}
+        onClose={() => setUploadOpen(false)}
+        activeTripId={activeTripId}
+        onSuccess={handleUploadSuccess}
+      />
     </>
   );
 }

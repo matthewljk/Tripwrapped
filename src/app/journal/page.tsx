@@ -19,6 +19,8 @@ import {
   pickHighlight,
 } from '@/lib/poiClustering';
 import { resolveWithGooglePlaces } from '@/lib/googlePlaces';
+import { getExpensesByDay } from '@/lib/transactionBalances';
+import { useTripParticipants } from '@/hooks/useTripParticipants';
 
 const dataClient = generateClient<Schema>();
 
@@ -55,8 +57,10 @@ function formatDateLabel(dateKey: string): string {
 
 export default function JournalPage() {
   const { activeTripId, activeTrip, hasTrip, loading } = useActiveTrip();
+  const { participants } = useTripParticipants(activeTripId);
   const [media, setMedia] = useState<MediaWithLocation[]>([]);
   const [loadingMedia, setLoadingMedia] = useState(true);
+  const [transactions, setTransactions] = useState<Schema['Transaction']['type'][]>([]);
   const [savedLocations, setSavedLocations] = useState<
     Array<{ id: string; userId: string; lat: number; lng: number; name: string }>
   >([]);
@@ -84,6 +88,16 @@ export default function JournalPage() {
       setMedia([]);
       setLoadingMedia(false);
     });
+  }, [activeTripId]);
+
+  useEffect(() => {
+    if (!activeTripId) {
+      setTransactions([]);
+      return;
+    }
+    dataClient.models.Transaction.list({
+      filter: { tripId: { eq: activeTripId } },
+    }).then(({ data }) => setTransactions(data ?? [])).catch(() => setTransactions([]));
   }, [activeTripId]);
 
   useEffect(() => {
@@ -115,6 +129,9 @@ export default function JournalPage() {
   const byDate = groupByDate(media);
   const dateKeys = Array.from(byDate.keys()).filter((k) => k !== 'unknown');
   dateKeys.sort((a, b) => b.localeCompare(a));
+
+  const baseCurrency = activeTrip?.baseCurrency ?? 'USD';
+  const expensesByDay = getExpensesByDay(transactions, baseCurrency);
 
   const tripStartDate = activeTrip?.startDate ?? null;
 
@@ -387,6 +404,11 @@ export default function JournalPage() {
               ? dayMedia.filter((m) => m.id !== highlight.id)
               : dayMedia;
 
+            const dayExpense = expensesByDay.get(dateKey);
+            const totalExpense = dayExpense?.total ?? 0;
+            const expenseByCategory = dayExpense?.byCategory ?? {};
+            const expenseByCategoryByCurrency = dayExpense?.byCategoryByCurrency ?? {};
+
             return (
               <DailyCard
                 key={dateKey}
@@ -397,6 +419,11 @@ export default function JournalPage() {
                 pois={pois}
                 totalCount={dayMedia.length}
                 averageRating={averageRating}
+                totalExpense={totalExpense}
+                expenseByCategory={expenseByCategory}
+                expenseByCategoryByCurrency={expenseByCategoryByCurrency}
+                baseCurrency={baseCurrency}
+                participantCount={Math.max(1, participants.length)}
                 onSaveReview={handleSaveReview}
                 onSaveLocationName={handleSaveLocationName}
                 onClearLocation={handleClearLocation}
