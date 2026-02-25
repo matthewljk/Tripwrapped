@@ -26,13 +26,11 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
       <ConfigureAmplifyClientSide />
       <LoginVideoBackground />
       <Authenticator socialProviders={['google']}>
-        {({ signOut }) => (
-          <>
-            <SetUsernamePrompt />
-            <Navbar signOut={signOut} isMobile={isMobile} />
-            <main className={isMobile ? 'min-h-dscreen pb-20' : 'min-h-dscreen'}>{children}</main>
-          </>
-        )}
+        <>
+          <SetUsernamePrompt />
+          <Navbar isMobile={isMobile} />
+          <main className={isMobile ? 'min-h-dscreen pb-20' : 'min-h-dscreen'}>{children}</main>
+        </>
       </Authenticator>
     </>
   );

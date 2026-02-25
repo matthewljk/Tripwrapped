@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getCurrentUser } from 'aws-amplify/auth';
+import { getCurrentUser, signOut } from 'aws-amplify/auth';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../../amplify/data/resource';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { useActiveTrip } from '@/hooks/useActiveTrip';
+import { useUserProfile } from '@/hooks/useUserProfile';
 
 const client = generateClient<Schema>();
 
@@ -13,6 +14,11 @@ const CURRENCIES = ['USD', 'EUR', 'GBP', 'SGD', 'AUD', 'JPY', 'CAD', 'CHF', 'THB
 
 export default function TripsPage() {
   const { trips, activeTripId, activeTrip, setActiveTripId, loading, hasTrip, refresh } = useActiveTrip();
+  const { username, suggestedUsername, hasProfile, loading: profileLoading, error: loadError, setUsernameAndSave, profileAvailable } = useUserProfile();
+  const [profileValue, setProfileValue] = useState('');
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileSaveError, setProfileSaveError] = useState<string | null>(null);
+  const [profileSaveSuccess, setProfileSaveSuccess] = useState(false);
   const [createCode, setCreateCode] = useState('');
   const [createName, setCreateName] = useState('');
   const [createStartDate, setCreateStartDate] = useState('');
@@ -34,12 +40,36 @@ export default function TripsPage() {
   const [settingsAllowAnyDelete, setSettingsAllowAnyDelete] = useState(false);
 
   useEffect(() => {
+    setProfileValue(username ?? suggestedUsername ?? '');
+  }, [username, suggestedUsername]);
+
+  useEffect(() => {
     if (!activeTrip) return;
     setSettingsBaseCurrency(activeTrip.baseCurrency ?? '');
     setSettingsStartDate(activeTrip.startDate ?? '');
     setSettingsBudgetPerPax(activeTrip.budgetPerPax != null ? String(activeTrip.budgetPerPax) : '');
     setSettingsAllowAnyDelete(activeTrip.allowAnyMemberToDelete === true);
   }, [activeTrip?.id, activeTrip?.baseCurrency, activeTrip?.startDate, activeTrip?.budgetPerPax, activeTrip?.allowAnyMemberToDelete]);
+
+  const handleProfileSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = profileValue.trim().slice(0, 50);
+    if (!trimmed) {
+      setProfileSaveError('Enter a username');
+      return;
+    }
+    setProfileSaveError(null);
+    setProfileSaveSuccess(false);
+    setProfileSaving(true);
+    try {
+      await setUsernameAndSave(trimmed);
+      setProfileSaveSuccess(true);
+    } catch (err) {
+      setProfileSaveError(err instanceof Error ? err.message : 'Could not save');
+    } finally {
+      setProfileSaving(false);
+    }
+  };
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -121,12 +151,65 @@ export default function TripsPage() {
     }
   };
 
-  if (loading) return <LoadingSpinner />;
+  if (loading || profileLoading) return <LoadingSpinner />;
 
   return (
     <div className="mx-auto max-w-2xl content-padding-x pb-28 pt-20 sm:pb-24 sm:pt-24 content-wrap">
-      <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Trips</h1>
-      <p className="mt-2 text-sm text-slate-600 sm:text-base">Join a trip with a code or create your own.</p>
+      {/* Profile first */}
+      <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Account</h1>
+      <p className="mt-2 text-sm text-slate-600 sm:text-base">Profile and trips.</p>
+
+      <section className="card mt-6 p-4 sm:mt-8 sm:p-6">
+        <h2 className="text-lg font-semibold text-slate-900">Profile</h2>
+        <p className="mt-1 text-sm text-slate-600">Manage your username and account.</p>
+        {!profileAvailable && (
+          <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
+            <p className="text-sm font-medium text-amber-800">Profile (username) is not available yet</p>
+            <p className="mt-1 text-xs text-amber-700">Deploy the backend so the UserProfile model is available (e.g. npx ampx sandbox), then refresh.</p>
+          </div>
+        )}
+        {profileAvailable && (
+          <>
+            {loadError && <p className="mt-2 text-sm font-medium text-red-600">{loadError}</p>}
+            <form onSubmit={handleProfileSubmit} className="mt-4 space-y-4">
+              <div>
+                <label htmlFor="profile-username" className="block text-sm font-medium text-slate-700">Display name</label>
+                <input
+                  id="profile-username"
+                  type="text"
+                  value={profileValue}
+                  onChange={(e) => setProfileValue(e.target.value)}
+                  placeholder="e.g. johndoe"
+                  maxLength={50}
+                  className="mt-2 block w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
+                  disabled={profileSaving}
+                />
+              </div>
+              {profileSaveError && <p className="text-sm font-medium text-red-600">{profileSaveError}</p>}
+              {profileSaveSuccess && <p className="text-sm font-medium text-slate-600">Username saved.</p>}
+              <button type="submit" disabled={profileSaving} className="btn-primary">{profileSaving ? 'Saving…' : 'Save username'}</button>
+            </form>
+          </>
+        )}
+        <div className="mt-6 border-t border-slate-100 pt-4">
+          <button
+            type="button"
+            onClick={() => signOut()}
+            className="text-sm font-medium text-slate-600 hover:text-slate-900"
+          >
+            Sign out
+          </button>
+        </div>
+      </section>
+
+      <section className="card mt-6 p-4 sm:mt-8 sm:p-6">
+        <h2 className="text-lg font-semibold text-slate-900">Password</h2>
+        <p className="mt-1 text-sm text-slate-600">Use &quot;Forgot password&quot; on the sign-in screen or your identity provider (e.g. Google account settings) to change your password.</p>
+      </section>
+
+      {/* Trips */}
+      <h2 className="mt-10 text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">Trips</h2>
+      <p className="mt-1 text-sm text-slate-600 sm:text-base">Join a trip with a code or create your own.</p>
       {hasTrip && (
         <section className="card mt-6 p-4 sm:mt-10 sm:p-8">
           <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">Active trip</p>

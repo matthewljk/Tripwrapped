@@ -253,48 +253,20 @@ const GalleryCard = memo(function GalleryCard({
             </div>
           )}
           {!selectMode && (
-            <div className="absolute right-3 top-3 z-10 flex items-center gap-2 rounded-lg bg-slate-900/60 p-1 sm:right-2 sm:top-2 sm:gap-1.5 sm:bg-transparent sm:p-0" onClick={(e) => e.stopPropagation()}>
+            <div className="absolute right-3 top-3 z-10 flex items-center rounded-lg bg-slate-900/60 p-0.5 sm:right-2 sm:top-2 sm:bg-transparent sm:p-0" onClick={(e) => e.stopPropagation()}>
               <button
                 type="button"
                 onClick={() => onToggleFavorite(item)}
                 disabled={favoritingId === item.id}
-                className={`flex h-10 w-10 min-h-[44px] min-w-[44px] items-center justify-center rounded-lg shadow hover:opacity-90 disabled:opacity-50 sm:h-9 sm:w-9 sm:min-h-0 sm:min-w-0 ${isFav ? 'bg-rose-500/90 text-white' : 'bg-slate-900/70 text-white hover:bg-slate-800/80'}`}
+                className={`flex h-7 w-7 items-center justify-center rounded-lg shadow hover:opacity-90 disabled:opacity-50 sm:h-9 sm:w-9 ${isFav ? 'bg-rose-500/90 text-white' : 'bg-slate-900/70 text-white hover:bg-slate-800/80'}`}
                 aria-label={isFav ? 'Unfavorite' : 'Favorite'}
               >
                 {favoritingId === item.id ? (
-                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  <span className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent sm:h-4 sm:w-4" />
                 ) : (
-                  <svg className="h-5 w-5" fill={isFav ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
+                  <svg className="h-4 w-4 sm:h-5 sm:w-5" fill={isFav ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
                 )}
               </button>
-              <button
-                type="button"
-                onClick={() => onDownload(item)}
-                disabled={downloadingId === item.id}
-                className="flex h-10 w-10 min-h-[44px] min-w-[44px] items-center justify-center rounded-lg bg-slate-900/70 text-white shadow hover:bg-slate-800/80 disabled:opacity-50 sm:h-9 sm:w-9 sm:min-h-0 sm:min-w-0"
-                aria-label="Download"
-              >
-                {downloadingId === item.id ? (
-                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                ) : (
-                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                )}
-              </button>
-              {canDelete && (
-                <button
-                  type="button"
-                  onClick={() => onDelete(item)}
-                  disabled={deletingId === item.id}
-                  className="flex h-10 w-10 min-h-[44px] min-w-[44px] items-center justify-center rounded-lg bg-slate-900/70 text-white shadow hover:bg-slate-800/80 disabled:opacity-50 sm:h-9 sm:w-9 sm:min-h-0 sm:min-w-0"
-                  aria-label="Delete"
-                >
-                  {deletingId === item.id ? (
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                  ) : (
-                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                  )}
-                </button>
-              )}
             </div>
           )}
         </div>
@@ -314,7 +286,10 @@ function GalleryToolbar({
   onSelectAll,
   onClearSelection,
   onDownloadSelected,
+  onDeleteSelected,
   downloadingMultiple,
+  deletingMultiple,
+  hasDeletableSelected,
   viewMode,
   onSwitchView,
   sortOption,
@@ -330,7 +305,10 @@ function GalleryToolbar({
   onSelectAll?: () => void;
   onClearSelection?: () => void;
   onDownloadSelected?: () => void;
+  onDeleteSelected?: () => void;
   downloadingMultiple?: boolean;
+  deletingMultiple?: boolean;
+  hasDeletableSelected?: boolean;
   viewMode?: 'grid' | 'metadata';
   onSwitchView?: () => void;
   sortOption?: SortOption;
@@ -396,6 +374,26 @@ function GalleryToolbar({
                 </>
               )}
             </button>
+            {onDeleteSelected && hasDeletableSelected && (
+              <button
+                type="button"
+                onClick={onDeleteSelected}
+                disabled={selectedCount === 0 || deletingMultiple}
+                className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-white px-4 py-2.5 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
+              >
+                {deletingMultiple ? (
+                  <>
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-red-400 border-t-transparent" />
+                    Deleting…
+                  </>
+                ) : (
+                  <>
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                    Delete
+                  </>
+                )}
+              </button>
+            )}
           </>
         )}
         {onToggleSelectMode && (
@@ -448,6 +446,7 @@ export default function MediaGallery({ activeTripId, activeTrip, userId, refresh
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [downloadingMultiple, setDownloadingMultiple] = useState(false);
+  const [deletingMultiple, setDeletingMultiple] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'metadata'>('grid');
   const [, setTick] = useState(0);
 
@@ -476,8 +475,8 @@ export default function MediaGallery({ activeTripId, activeTrip, userId, refresh
   }, [activeTripId]);
 
   const handleDelete = useCallback(
-    async (item: MediaItem) => {
-      if (!window.confirm('Delete this photo/video? This cannot be undone.')) return;
+    async (item: MediaItem, options?: { skipConfirm?: boolean }) => {
+      if (!options?.skipConfirm && !window.confirm('Delete this photo/video? This cannot be undone.')) return;
       setDeletingId(item.id);
       setError(null);
       try {
@@ -757,6 +756,20 @@ export default function MediaGallery({ activeTripId, activeTrip, userId, refresh
     setDownloadingMultiple(false);
   }, [displayedItems, selectedIds, handleDownload]);
 
+  const handleDeleteSelected = useCallback(async () => {
+    const toDelete = displayedItems.filter((i) => selectedIds.has(i.id) && canDelete(i));
+    if (toDelete.length === 0) return;
+    if (!window.confirm(`Delete ${toDelete.length} selected? This cannot be undone.`)) return;
+    setDeletingMultiple(true);
+    setError(null);
+    for (let i = 0; i < toDelete.length; i++) {
+      await handleDelete(toDelete[i], { skipConfirm: true });
+      if (i < toDelete.length - 1) await new Promise((r) => setTimeout(r, 200));
+    }
+    setSelectedIds(new Set());
+    setDeletingMultiple(false);
+  }, [displayedItems, selectedIds, handleDelete]);
+
   if (loading && rawList.length === 0) {
     return (
       <div className="flex min-h-[50vh] flex-col items-center justify-center gap-6 py-12">
@@ -915,7 +928,10 @@ export default function MediaGallery({ activeTripId, activeTrip, userId, refresh
         onSelectAll={viewMode === 'grid' ? selectAll : undefined}
         onClearSelection={viewMode === 'grid' ? clearSelection : undefined}
         onDownloadSelected={viewMode === 'grid' ? handleDownloadSelected : undefined}
+        onDeleteSelected={viewMode === 'grid' ? handleDeleteSelected : undefined}
         downloadingMultiple={viewMode === 'grid' ? downloadingMultiple : undefined}
+        deletingMultiple={viewMode === 'grid' ? deletingMultiple : undefined}
+        hasDeletableSelected={viewMode === 'grid' ? displayedItems.some((i) => selectedIds.has(i.id) && canDelete(i)) : undefined}
       />
       {viewMode === 'metadata' ? (
         <div className="pb-24 pt-6 overflow-x-auto sm:pt-2">{metadataTable}</div>

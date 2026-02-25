@@ -5,7 +5,6 @@ import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 
 type NavbarProps = {
-  signOut?: () => void;
   isMobile?: boolean;
 };
 
@@ -15,8 +14,7 @@ const navLinks = [
   { href: '/journal', label: 'Journal', icon: 'journal' },
   { href: '/ops', label: 'O$P$', icon: 'money' },
   { href: '/wrap-it-up', label: 'Wrap It Up', icon: 'map' },
-  { href: '/trips', label: 'Trips', icon: 'trips' },
-  { href: '/profile', label: 'Profile', icon: 'profile' },
+  { href: '/trips', label: 'Account', icon: 'profile' },
 ];
 
 function NavIcon({ icon }: { icon: string }) {
@@ -69,14 +67,14 @@ function NavIcon({ icon }: { icon: string }) {
   }
 }
 
-export default function Navbar({ signOut, isMobile = false }: NavbarProps) {
+export default function Navbar({ isMobile = false }: NavbarProps) {
   const pathname = usePathname();
   const showDesktopNav = !isMobile;
   const showBottomNav = isMobile;
 
   return (
     <>
-      {/* Top bar: logo + desktop nav + sign out; on mobile just logo + sign out icon */}
+      {/* Top bar: logo + desktop nav */}
       <header className="fixed top-0 left-0 right-0 z-50 border-b border-slate-200/80 bg-white/95 backdrop-blur-md content-padding-x">
         <nav className="mx-auto flex h-14 min-h-[44px] max-w-6xl items-center justify-between gap-2 sm:h-16">
           <Link
@@ -109,28 +107,7 @@ export default function Navbar({ signOut, isMobile = false }: NavbarProps) {
                 </Link>
               );
             })}
-            {signOut && (
-              <button
-                type="button"
-                onClick={signOut}
-                className="ml-2 min-h-[44px] min-w-[44px] rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-600 transition-all duration-200 hover:bg-slate-100 hover:text-slate-900"
-              >
-                Sign out
-              </button>
-            )}
           </div>
-          )}
-          {signOut && showBottomNav && (
-            <button
-              type="button"
-              onClick={signOut}
-              className="min-h-[44px] min-w-[44px] rounded-xl p-2.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
-              aria-label="Sign out"
-            >
-              <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-              </svg>
-            </button>
           )}
         </nav>
       </header>
