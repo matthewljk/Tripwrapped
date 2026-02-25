@@ -9,7 +9,7 @@ import AuthModal from '@/components/AuthModal';
 import LoginLanding from '@/components/LoginLanding';
 import LoginVideoBackground from '@/components/LoginVideoBackground';
 import Navbar from '@/components/Navbar';
-import RedirectToTripsIfNeeded, { setAuthRedirectToTrips } from '@/components/RedirectToTripsIfNeeded';
+import RedirectToTripsIfNeeded, { setAuthRedirectToHome } from '@/components/RedirectToTripsIfNeeded';
 import SetUsernamePrompt from '@/components/SetUsernamePrompt';
 import { useLayoutMode } from '@/hooks/useIsMobile';
 
@@ -35,7 +35,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   }, []);
 
   const openAuthModal = () => {
-    setAuthRedirectToTrips();
+    setAuthRedirectToHome();
     setAuthModalOpen(true);
   };
 

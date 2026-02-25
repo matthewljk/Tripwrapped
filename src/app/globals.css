@@ -67,6 +67,15 @@ body {
   padding-bottom: env(safe-area-inset-bottom, 0);
 }
 
+/* Hide scrollbar while keeping scroll behavior */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 /* Dynamic viewport: adapts when mobile browser UI shows/hides */
 .min-h-dscreen {
   min-height: 100dvh;

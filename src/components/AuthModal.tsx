@@ -20,7 +20,7 @@ export default function AuthModal({ isOpen, onClose, onSignedIn }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-end justify-center bg-slate-900/80 p-0 backdrop-blur-sm sm:items-center sm:p-4"
+      className="fixed inset-0 z-[100] flex items-end justify-center bg-slate-900/30 p-0 sm:items-center sm:p-4"
       style={{
         paddingLeft: 'env(safe-area-inset-left)',
         paddingRight: 'env(safe-area-inset-right)',
@@ -31,7 +31,7 @@ export default function AuthModal({ isOpen, onClose, onSignedIn }: Props) {
       aria-labelledby="auth-modal-title"
     >
       <div
-        className="relative max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-t-2xl border border-slate-200 bg-white shadow-2xl sm:rounded-2xl"
+        className="relative max-h-[90dvh] w-full max-w-md overflow-y-auto scrollbar-hide rounded-t-2xl border border-slate-200 bg-white shadow-2xl sm:rounded-2xl"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
         <button

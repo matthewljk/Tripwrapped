@@ -5,14 +5,14 @@ import { usePathname, useRouter } from 'next/navigation';
 
 const REDIRECT_KEY = 'auth_redirect';
 
-export function setAuthRedirectToTrips() {
+export function setAuthRedirectToHome() {
   if (typeof window !== 'undefined') {
-    window.sessionStorage.setItem(REDIRECT_KEY, 'trips');
+    window.sessionStorage.setItem(REDIRECT_KEY, 'home');
   }
 }
 
 /**
- * When mounted and authenticated, redirects to /trips once if sessionStorage has auth_redirect=trips.
+ * When mounted and authenticated, redirects to / (add page) once if sessionStorage has auth_redirect=home.
  */
 export default function RedirectToTripsIfNeeded() {
   const pathname = usePathname();
@@ -21,9 +21,9 @@ export default function RedirectToTripsIfNeeded() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const redirect = window.sessionStorage.getItem(REDIRECT_KEY);
-    if (redirect === 'trips' && pathname !== '/trips') {
+    if (redirect === 'home' && pathname !== '/') {
       window.sessionStorage.removeItem(REDIRECT_KEY);
-      router.replace('/trips');
+      router.replace('/');
     }
   }, [pathname, router]);
 

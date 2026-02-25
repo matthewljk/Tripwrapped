@@ -28,7 +28,7 @@ export default function SetUsernamePrompt() {
     setSaving(true);
     try {
       await setUsernameAndSave(trimmed);
-      router.replace('/trips');
+      router.replace('/');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save');
     } finally {

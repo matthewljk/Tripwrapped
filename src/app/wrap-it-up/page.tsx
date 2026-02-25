@@ -4,6 +4,7 @@ import Link from 'next/link';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import TripMap from '@/components/TripMap';
 import TripSelector from '@/components/TripSelector';
+import WrapRecap from '@/components/WrapRecap';
 import { useActiveTrip } from '@/hooks/useActiveTrip';
 
 export default function WrapItUpPage() {
@@ -54,8 +55,19 @@ export default function WrapItUpPage() {
           <TripSelector />
         </div>
       </div>
-      <div className="h-[calc(100dvh-9rem)] min-h-[280px] w-full sm:min-h-[320px]">
+      <div className="h-[min(60dvh,480px)] min-h-[280px] w-full sm:min-h-[320px]">
         <TripMap activeTripId={activeTripId} mapboxAccessToken={token} />
+      </div>
+      <div className="mx-auto max-w-6xl content-padding-x content-wrap py-8 sm:py-12">
+        <h2 id="recap" className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
+          Your trip recap
+        </h2>
+        <p className="mt-1 text-sm text-slate-600">
+          Generate a Spotify-style recap video from your stats and highlights.
+        </p>
+        <div className="mt-6">
+          <WrapRecap activeTripId={activeTripId} />
+        </div>
       </div>
     </>
   );

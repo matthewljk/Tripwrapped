@@ -43,30 +43,40 @@ src/
     gallery/page.tsx    # /gallery
     journal/page.tsx    # Daily Journal (POIs, highlight, ratings)
     ops/page.tsx        # O$P$ — balances, budget, settlements, transaction history
-    wrap-it-up/page.tsx # Trip map (Mapbox)
+    wrap-it-up/page.tsx # Trip map (Mapbox) + trip recap video (stats, media selection, orientation, generate/play/download)
     trips/page.tsx      # /trips — Account (active trip, join, create, profile, sign out)
     profile/page.tsx    # Redirects to /trips
     globals.css
   components/
-    ClientLayout.tsx    # Wraps children with Navbar, ConfigureAmplify
+    ClientLayout.tsx    # Auth gate: landing (Join/Create trip) or Authenticator + app; redirect to / after sign-in
     ConfigureAmplify.tsx # Amplify.configure(outputs); single entry for config
     Navbar.tsx          # Logo (public/login-videos/Icon.png) + TripWrapped, nav links
-    MediaUpload.tsx     # Upload UI, S3 + Media create (EXIF/video metadata)
+    LoginVideoBackground.tsx # Horses.mp4 background when unauthenticated
+    LoginCover.tsx      # Icon + TripWrapped + tagline (used in auth modal)
+    LoginLanding.tsx    # Unauthenticated: cover + Join a trip / Create a trip (opens auth modal)
+    AuthModal.tsx       # Sign-in/sign-up modal (Authenticator); light overlay so background visible
+    RedirectToTripsIfNeeded.tsx # Redirect to / after login when auth_redirect=home
+    MediaUpload.tsx     # Upload UI, S3 + Media create (EXIF/video metadata); 50 MB max, 15 s max video
     MediaGallery.tsx    # Grid + metadata view, sort, load more, list cache, download/delete
     UploadModal.tsx
     TripSelector.tsx
-    TransactionForm.tsx # Add transaction: category, date (or accommodation start/end), split; currency from trip (API or sessionStorage)
+    TransactionForm.tsx # Add transaction: category, date (or accommodation start/end), split; currency from trip
     TripMap.tsx         # Mapbox Standard, 3D terrain, memory heatmap, photo markers
     DailyCard.tsx       # Journal day card (highlight, Photo Trail, per-location expand, rating/review, summary)
+    WrapRecap.tsx       # Stats + media selector (check/uncheck) + TripVideoCompiler
+    WrapRecapMediaSelector.tsx # Per-day grid of thumbnails; exclude from recap by unchecking
+    TripVideoCompiler.tsx # Orientation (landscape/portrait), compile video in-browser (canvas + MediaRecorder), play or download
     SetUsernamePrompt.tsx
-    LoginVideoBackground.tsx
     LoadingSpinner.tsx
   hooks/
     useActiveTrip.ts
     useUserProfile.ts
     useIsMobile.ts
+    useWrapRecapData.ts # Fetches trip, media, transactions; buildWrapRecap for stats + days/highlights
   lib/
     poiClustering.ts   # POI clustering (100 m for journal), highlight score, date grouping
+    tripStats.ts       # Journey distance (Haversine) from time-sorted media with lat/lng
+    wrapRecap.ts       # buildWrapRecap, getVideoTimeline, getLocationNamesForDay, filterRecapByExcluded
     googlePlaces.ts    # Resolve POI name via /api/places/nearby (Google Places searchNearby), SavedLocation fallback
   app/api/places/nearby/
     route.ts           # POST: proxy to Google Places API (New) searchNearby; type-priority pick; GOOGLE_MAPS_API_KEY
@@ -129,12 +139,12 @@ amplify/
 
 | Path           | Role |
 |----------------|------|
-| `/`            | **Add:** trip selector; photo/video upload; **Add transaction** (expandable, category → date; accommodation = start/end date; currency defaults to trip currency from Trip settings, with sessionStorage fallback so it shows even before API sync). HEIC → JPEG in-browser. |
+| `/`            | **Add:** trip selector; photo/video upload (50 MB max per file, 15 s max video; HEIC → JPEG in-browser); **Add transaction** (expandable, category → date; accommodation = start/end date; currency defaults to trip currency from Trip settings, with sessionStorage fallback). |
 | `/gallery`     | Masonry grid (load more), sort (date/type/user/favorites), lightbox, select mode for download/delete, favorite. Media loads when ready (no flash). |
 | `/journal`    | Daily Journal: media by date and POI (~100 m). Photo Trail, per-location rating/review, Google Places POI names, highlight image. |
-| `/wrap-it-up`  | Map (Mapbox Standard, 3D terrain): memory heatmap, photo markers. |
+| `/wrap-it-up`  | **Map** (Mapbox Standard, 3D terrain): memory heatmap, photo markers. **Trip recap:** stats, choose which photos/videos to include, pick orientation (landscape/portrait), generate a Spotify-style recap video in-browser (intro + day cards with locations + media); play in app or download WebM. Days with no selected/orientation-matching media are skipped. |
 | `/ops`         | **O$P$:** your balance, budget (trip budget per person, total expense, % utilised, per person), settle-up list, transaction history (top 3 days by default, expand for more). |
-| `/trips`       | **Account:** active trip (selector, trip settings expandable, leave trip), join by code, create trip (expandable). **Trip codes** are normalised to uppercase with no spaces (e.g. BALI2026) for uniqueness; create and join inputs enforce this. Profile (username), sign out, password. Trip settings: currency (default SGD), start/end date, budget per person, who can delete; any member can edit and save. Leave trip (red button); when last member leaves, trip and all media/transactions are deleted. |
+| `/trips`       | **Account:** active trip (selector, trip settings expandable, leave trip), join by code, create trip (expandable). **Trip codes** are normalised to uppercase with no spaces (e.g. BALI2026) for uniqueness; create and join inputs enforce this. Profile (username), sign out (red button). Trip settings: currency (default SGD), start/end date, budget per person, who can delete; any member can edit and save. Leave trip (red button); when last member leaves, trip and all media/transactions are deleted. |
 | `/profile`     | Redirects to `/trips`. |
 
 **Wrap It Up:** Requires `NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN` in `.env.local` (or in Amplify Hosting env). Get a token at [mapbox.com](https://account.mapbox.com/access-tokens/).
