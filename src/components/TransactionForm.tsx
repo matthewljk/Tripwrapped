@@ -213,10 +213,10 @@ export default function TransactionForm({
         e.preventDefault();
         handleSubmit();
       }}
-      className="space-y-5"
+      className="space-y-4 sm:space-y-5"
     >
-      <div className="grid grid-cols-2 gap-4">
-        <div>
+      <div className="grid grid-cols-2 gap-3 sm:gap-4">
+        <div className="min-w-0">
           <label htmlFor="tx-amount" className="block text-sm font-medium text-slate-700">Amount</label>
           <input
             id="tx-amount"
@@ -226,10 +226,10 @@ export default function TransactionForm({
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             placeholder="0.00"
-            className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
+            className="mt-1 w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
           />
         </div>
-        <div>
+        <div className="min-w-0">
           <label htmlFor="tx-currency" className="block text-sm font-medium text-slate-700">Currency</label>
           <select
             id="tx-currency"
@@ -343,7 +343,7 @@ export default function TransactionForm({
       <div>
         <p className="text-sm font-medium text-slate-700">Split between</p>
         <p className="mt-0.5 text-xs text-slate-500">Tap to include or exclude. At least one required.</p>
-        <div className="mt-3 flex flex-wrap gap-3">
+        <div className="mt-3 flex flex-wrap gap-4 sm:gap-3">
           {participants.map((p) => (
             <div key={p.userId} className="flex flex-col items-center gap-1">
               <ParticipantAvatar
@@ -394,8 +394,8 @@ export default function TransactionForm({
           <div className="mt-3 space-y-2 rounded-xl border border-slate-200 bg-slate-50/50 p-3">
             <p className="text-xs text-slate-600">Enter each person&apos;s share in {currency}.</p>
             {participants.filter((p) => includedInSplit.has(p.userId)).map((p) => (
-              <div key={p.userId} className="flex items-center gap-2">
-                <label className="min-w-[100px] text-sm text-slate-700">{displayParticipant(p)}</label>
+              <div key={p.userId} className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
+                <label className="w-full min-w-0 text-sm text-slate-700 sm:w-auto sm:min-w-[100px]">{displayParticipant(p)}</label>
                 <input
                   type="number"
                   step="0.01"
@@ -403,7 +403,7 @@ export default function TransactionForm({
                   value={customAmounts[p.userId] ?? ''}
                   onChange={(e) => setCustomAmounts((prev) => ({ ...prev, [p.userId]: e.target.value }))}
                   placeholder="0"
-                  className="w-24 rounded-lg border border-slate-200 bg-white px-2 py-1 text-sm text-slate-900"
+                  className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-900 sm:w-24 sm:flex-initial"
                 />
                 <span className="text-xs text-slate-500">{currency}</span>
               </div>
@@ -420,12 +420,12 @@ export default function TransactionForm({
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
-      <div className="flex gap-3">
+      <div className="flex flex-col-reverse gap-3 sm:flex-row">
         {showCancel && onCancel && (
           <button
             type="button"
             onClick={onCancel}
-            className="flex-1 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            className="w-full flex-1 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 sm:w-auto"
           >
             Cancel
           </button>
@@ -433,7 +433,7 @@ export default function TransactionForm({
         <button
           type="submit"
           disabled={!isValidAmount || !hasCurrency || !paidBy || !customValid || submitting}
-          className={showCancel && onCancel ? 'btn-primary flex-1' : 'btn-primary w-full'}
+          className={showCancel && onCancel ? 'btn-primary w-full flex-1 sm:w-auto' : 'btn-primary w-full'}
         >
           {submitting ? 'Adding…' : 'Add transaction'}
         </button>

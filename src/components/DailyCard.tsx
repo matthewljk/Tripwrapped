@@ -187,6 +187,7 @@ export default function DailyCard({
   const [expandedPoiKey, setExpandedPoiKey] = useState<string | null>(null);
   const [expenseSummaryExpanded, setExpenseSummaryExpanded] = useState(false);
   const [highlightUrl, setHighlightUrl] = useState<string | null>(null);
+  const [highlightLoaded, setHighlightLoaded] = useState(false);
   const [highlightFailed, setHighlightFailed] = useState(false);
   const [candidateIndex, setCandidateIndex] = useState(0);
   const [inView, setInView] = useState(false);
@@ -214,6 +215,7 @@ export default function DailyCard({
   useEffect(() => {
     setCandidateIndex(0);
     setHighlightUrl(null);
+    setHighlightLoaded(false);
     setHighlightFailed(false);
   }, [highlightMedia?.id]);
 
@@ -247,6 +249,7 @@ export default function DailyCard({
       })
         .then(({ url }) => {
           if (!cancelled) {
+            setHighlightLoaded(false);
             setHighlightUrl(url.toString());
             setHighlightFailed(false);
           }
@@ -291,23 +294,39 @@ export default function DailyCard({
 
   return (
     <div ref={cardRef} className="card overflow-hidden">
-      {/* Hero: Highlight of the day (or fallback photo if primary fails to load) */}
-      <div className="relative aspect-[2/1] w-full bg-slate-100 sm:aspect-[21/9]">
+      {/* Hero: Highlight of the day (or fallback photo if primary fails to load). Only show when fully loaded. */}
+      <div className="relative aspect-[4/3] w-full bg-slate-100 sm:aspect-[21/9]">
           {highlightUrl && currentCandidate?.storagePath ? (
             isImage(currentCandidate.storagePath) ? (
-              <img
-                src={highlightUrl}
-                alt=""
-                className="h-full w-full object-cover"
-              />
+              <>
+                {!highlightLoaded && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="h-8 w-8 animate-spin rounded-full border-2 border-slate-300 border-t-slate-500" aria-hidden />
+                  </div>
+                )}
+                <img
+                  src={highlightUrl}
+                  alt=""
+                  className={`h-full w-full object-cover transition-opacity duration-200 ${highlightLoaded ? 'opacity-100' : 'opacity-0'}`}
+                  onLoad={() => setHighlightLoaded(true)}
+                />
+              </>
             ) : isVideo(currentCandidate.storagePath) ? (
-              <video
-                src={highlightUrl}
-                className="h-full w-full object-cover"
-                muted
-                playsInline
-                preload="metadata"
-              />
+              <>
+                {!highlightLoaded && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="h-8 w-8 animate-spin rounded-full border-2 border-slate-300 border-t-slate-500" aria-hidden />
+                  </div>
+                )}
+                <video
+                  src={highlightUrl}
+                  className={`h-full w-full object-cover transition-opacity duration-200 ${highlightLoaded ? 'opacity-100' : 'opacity-0'}`}
+                  muted
+                  playsInline
+                  preload="metadata"
+                  onLoadedData={() => setHighlightLoaded(true)}
+                />
+              </>
             ) : (
               <div className="flex h-full w-full items-center justify-center text-4xl text-slate-400">
                 📷
@@ -322,17 +341,17 @@ export default function DailyCard({
               <span className="h-8 w-8 animate-spin rounded-full border-2 border-slate-300 border-t-slate-500" aria-hidden />
             </div>
           )}
-          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4">
-            <p className="text-lg font-bold text-white drop-shadow">{header}</p>
-            <p className="text-sm text-white/90">{dateLabel}</p>
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-3 sm:p-4">
+            <p className="text-base font-bold text-white drop-shadow sm:text-lg">{header}</p>
+            <p className="text-xs text-white/90 sm:text-sm">{dateLabel}</p>
           </div>
         </div>
 
       {/* Photo Trail — each row: Time - Icon [location]; tap to expand that location only */}
-      <div className="border-t border-slate-100 p-4">
+      <div className="border-t border-slate-100 p-3 sm:p-4">
         <p className="text-sm font-semibold text-slate-700">Photo Trail</p>
         {trailPois.length > 0 ? (
-          <ul className="mt-3 space-y-0 border-l-2 border-slate-200 pl-8" role="list">
+          <ul className="mt-3 space-y-0 border-l-2 border-slate-200 pl-6 sm:pl-8" role="list">
             {trailPois.map((poi, i) => {
               const timeLabel = getPoiTimeLabel(poi);
               const poiKey = poi.media[0]?.id ?? `poi-${poi.center.lat}-${poi.center.lng}-${i}`;
@@ -345,7 +364,7 @@ export default function DailyCard({
                     className="relative flex w-full items-center gap-3 py-2 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
                   >
                     <span
-                      className="absolute -left-8 top-1/2 -ml-3 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full border-2 border-slate-200 bg-white text-sm shadow-sm"
+                      className="absolute -left-6 top-1/2 -ml-3 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full border-2 border-slate-200 bg-white text-xs shadow-sm sm:-left-8 sm:h-6 sm:w-6 sm:text-sm"
                       aria-hidden
                     >
                       {getPlaceIcon(poi.placeType)}
@@ -385,7 +404,7 @@ export default function DailyCard({
         </p>
 
         {/* Summary: average stars, locations visited, contributors (same line) */}
-        <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-slate-200 pt-4">
+        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-slate-200 pt-3 sm:mt-4 sm:gap-x-4 sm:pt-4">
           {averageRating != null && averageRating >= 1 && averageRating <= 5 && (
             <span className="text-sm font-medium text-amber-600">★ {averageRating.toFixed(1)} average</span>
           )}
@@ -426,7 +445,7 @@ export default function DailyCard({
           const showLegacyTotal = totalExpense > 0 && !hasTotalByCurrency;
           if (!hasTotalByCurrency && !showLegacyTotal) return null;
           return (
-            <div className="mt-3 text-sm font-medium text-slate-700">
+            <div className="mt-3 text-xs font-medium text-slate-700 sm:text-sm">
               <span className="font-medium">Total expense: </span>
               {hasTotalByCurrency
                 ? Object.entries(totalByCurrency)
@@ -473,9 +492,9 @@ export default function DailyCard({
                     return sumB - sumA;
                   })
                   .map(([catId, amounts]) => (
-                    <li key={String(catId)} className="flex justify-between gap-2">
-                      <span>{getCategoryLabel(catId)}</span>
-                      <span className="font-medium text-slate-800 text-right">
+                    <li key={String(catId)} className="flex justify-between gap-2 text-left">
+                      <span className="min-w-0 flex-1">{getCategoryLabel(catId)}</span>
+                      <span className="flex-shrink-0 font-medium text-slate-800 text-right">
                         {Object.entries(amounts)
                           .map(([curr, amt]) =>
                             new Intl.NumberFormat(undefined, { style: 'currency', currency: curr || baseCurrency, minimumFractionDigits: 2 }).format(amt)

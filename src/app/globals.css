@@ -37,6 +37,13 @@ body {
   padding-right: env(safe-area-inset-right, 0);
 }
 
+/* Prevent long words from overflowing on small screens */
+.content-wrap {
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  word-break: break-word;
+}
+
 .safe-area-bottom {
   padding-bottom: env(safe-area-inset-bottom, 0);
 }

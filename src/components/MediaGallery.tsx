@@ -169,17 +169,27 @@ const GalleryCard = memo(function GalleryCard({
   onToggleFavorite,
 }: GalleryCardProps) {
   const isFav = Boolean(item.isFavorite);
+  const [mediaLoaded, setMediaLoaded] = useState(false);
+
+  useEffect(() => {
+    setMediaLoaded(false);
+  }, [item.url, item.id]);
+
+  const isImg = item.url && isImage(item.path);
+  const isVid = item.url && isVideo(item.path);
+  const showPlaceholder = !item.url || ((isImg || isVid) && !mediaLoaded);
+
   return (
     <div className="group relative mb-4 block w-full break-inside-avoid sm:mb-5 lg:mb-6">
       <div
         role="button"
         tabIndex={0}
-        onClick={() => (selectMode ? onToggleSelection(item.id) : item.url ? onCardClick(item) : undefined)}
+        onClick={() => (selectMode ? onToggleSelection(item.id) : item.url && mediaLoaded ? onCardClick(item) : undefined)}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
             if (selectMode) onToggleSelection(item.id);
-            else if (item.url) onCardClick(item);
+            else if (item.url && mediaLoaded) onCardClick(item);
           }
         }}
         className={`block w-full cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 ${selectMode && selected ? 'ring-2 ring-blue-600 ring-offset-2' : ''}`}
@@ -189,26 +199,43 @@ const GalleryCard = memo(function GalleryCard({
             <div className="aspect-square w-full rounded-2xl bg-slate-100 animate-pulse" aria-hidden />
           ) : (
             <>
-              {isImage(item.path) && (
-                <img src={item.url} alt="" loading="lazy" decoding="async" className="w-full object-cover align-top opacity-0 pointer-events-none" aria-hidden />
+              {/* Placeholder until media has fully loaded */}
+              {showPlaceholder && (
+                <div
+                  className={`absolute inset-0 z-0 flex items-center justify-center rounded-2xl bg-slate-100 animate-pulse ${isVid ? 'aspect-video w-full' : 'aspect-square w-full'}`}
+                  aria-hidden
+                >
+                  <span className="h-8 w-8 shrink-0 rounded-full border-2 border-slate-300 border-t-slate-500 animate-spin" aria-hidden />
+                </div>
               )}
-              {isVideo(item.path) && (
-                <div className="aspect-video w-full" aria-hidden />
+              {/* Hidden media to load; when loaded we show the visible layer */}
+              {isImg && (
+                <img
+                  src={item.url}
+                  alt=""
+                  loading="lazy"
+                  decoding="async"
+                  className={`absolute inset-0 z-[1] h-full w-full rounded-2xl object-cover transition-opacity duration-200 ${mediaLoaded ? 'opacity-100' : 'opacity-0'}`}
+                  onLoad={() => setMediaLoaded(true)}
+                />
               )}
-              {!isImage(item.path) && !isVideo(item.path) && (
-                <div className="aspect-square w-full" aria-hidden />
+              {isVid && (
+                <video
+                  src={item.url}
+                  className={`absolute inset-0 z-[1] h-full w-full rounded-2xl object-cover transition-opacity duration-200 ${mediaLoaded ? 'opacity-100' : 'opacity-0'}`}
+                  muted
+                  playsInline
+                  preload="metadata"
+                  onLoadedData={() => setMediaLoaded(true)}
+                />
               )}
-              <div className="absolute inset-0 z-0 overflow-hidden rounded-2xl">
-                {isImage(item.path) && (
-                  <img src={item.url} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover align-top transition-transform duration-200 group-hover:scale-[1.02]" />
-                )}
-                {isVideo(item.path) && (
-                  <video src={item.url} className="h-full w-full object-cover align-top transition-transform duration-200 group-hover:scale-[1.02]" muted playsInline preload="metadata" />
-                )}
-                {!isImage(item.path) && !isVideo(item.path) && (
-                  <div className="flex aspect-square w-full items-center justify-center bg-slate-100 text-4xl">📎</div>
-                )}
-              </div>
+              {item.url && !isImg && !isVid && (
+                <div className="absolute inset-0 z-[1] flex aspect-square w-full items-center justify-center rounded-2xl bg-slate-100 text-4xl">
+                  📎
+                </div>
+              )}
+              {/* Spacer for layout (aspect ratio) */}
+              <div className={isVid ? 'aspect-video w-full' : 'aspect-square w-full'} aria-hidden />
             </>
           )}
           {selectMode && (
@@ -310,8 +337,8 @@ function GalleryToolbar({
   onSortChange?: (sort: SortOption) => void;
 }) {
   return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-      <span className="text-xs text-slate-500 sm:text-sm">
+    <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between content-wrap min-w-0">
+      <span className="text-xs text-slate-500 sm:text-sm min-w-0">
         {lastRefreshedAt ? <>Last refreshed {formatLastRefreshed(lastRefreshedAt)}</> : '—'}
       </span>
       <div className="flex flex-wrap items-center gap-2">
@@ -894,7 +921,7 @@ export default function MediaGallery({ activeTripId, activeTrip, userId, refresh
         <div className="pb-24 pt-6 overflow-x-auto sm:pt-2">{metadataTable}</div>
       ) : (
         <>
-          <div className="columns-2 gap-4 pb-6 pt-8 sm:gap-5 sm:pt-4 md:columns-3 lg:columns-4 lg:gap-6">
+          <div className="columns-2 gap-4 pb-6 pt-8 sm:gap-5 sm:pt-4 md:columns-3 lg:columns-4 lg:gap-6 min-w-0 content-wrap px-2 sm:px-0">
             {displayedItems.map((item) => (
               <GalleryCard
                 key={item.id}

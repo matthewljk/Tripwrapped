@@ -124,7 +124,7 @@ export default function TripsPage() {
   if (loading) return <LoadingSpinner />;
 
   return (
-    <div className="mx-auto max-w-2xl px-5 pb-28 pt-20 sm:pb-24 sm:pt-24 sm:px-6 safe-area-padding">
+    <div className="mx-auto max-w-2xl px-6 pb-28 pt-20 sm:pb-24 sm:pt-24 sm:px-6 safe-area-padding content-wrap">
       <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Trips</h1>
       <p className="mt-2 text-sm text-slate-600 sm:text-base">Join a trip with a code or create your own.</p>
       {hasTrip && (
