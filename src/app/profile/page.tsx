@@ -40,7 +40,7 @@ export default function ProfilePage() {
   return (
     <>
       <div className="h-14 sm:h-16" />
-      <div className="mx-auto max-w-xl px-6 pb-24 py-8 sm:pb-0 sm:px-6 sm:py-12 safe-area-padding content-wrap">
+      <div className="mx-auto max-w-xl content-padding-x pb-24 py-8 sm:pb-0 sm:py-12 content-wrap">
         <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-2xl">Profile</h1>
         <p className="mt-2 text-sm text-slate-600 sm:text-base">Manage your username and account settings.</p>
         {!profileAvailable && (

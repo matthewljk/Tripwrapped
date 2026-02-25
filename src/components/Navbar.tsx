@@ -77,8 +77,8 @@ export default function Navbar({ signOut, isMobile = false }: NavbarProps) {
   return (
     <>
       {/* Top bar: logo + desktop nav + sign out; on mobile just logo + sign out icon */}
-      <header className="fixed top-0 left-0 right-0 z-50 border-b border-slate-200/80 bg-white/95 backdrop-blur-md safe-area-padding">
-        <nav className="mx-auto flex h-14 min-h-[44px] max-w-6xl items-center justify-between gap-2 px-5 sm:h-16 sm:px-6">
+      <header className="fixed top-0 left-0 right-0 z-50 border-b border-slate-200/80 bg-white/95 backdrop-blur-md content-padding-x">
+        <nav className="mx-auto flex h-14 min-h-[44px] max-w-6xl items-center justify-between gap-2 sm:h-16">
           <Link
             href="/"
             className="flex min-w-0 flex-shrink items-center gap-2 text-base font-bold tracking-tight text-slate-900 sm:text-xl"
@@ -138,7 +138,7 @@ export default function Navbar({ signOut, isMobile = false }: NavbarProps) {
       {/* Bottom nav: only when isMobile (phone/tablet or narrow + mobile UA) */}
       {showBottomNav && (
       <nav
-        className="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200 bg-white/95 backdrop-blur-md safe-area-padding safe-area-bottom"
+        className="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200 bg-white/95 backdrop-blur-md content-padding-x safe-area-bottom"
         aria-label="Main navigation"
       >
         <div className="mx-auto flex max-w-lg items-center justify-around">

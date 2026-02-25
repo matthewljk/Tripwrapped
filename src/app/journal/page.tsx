@@ -335,7 +335,7 @@ export default function JournalPage() {
 
   if (!hasTrip) {
     return (
-      <div className="mx-auto max-w-2xl px-6 pb-28 pt-20 sm:pb-24 sm:pt-24 sm:px-6 safe-area-padding content-wrap">
+      <div className="mx-auto max-w-2xl content-padding-x pb-28 pt-20 sm:pb-24 sm:pt-24 content-wrap">
         <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
           Daily Journal
         </h1>
@@ -350,7 +350,7 @@ export default function JournalPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-6 pb-28 pt-20 sm:pb-24 sm:pt-24 sm:px-6 safe-area-padding content-wrap">
+    <div className="mx-auto max-w-2xl content-padding-x pb-28 pt-20 sm:pb-24 sm:pt-24 content-wrap">
       <div className="flex flex-col gap-4 border-b border-slate-100 py-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3 sm:py-6">
         <div className="min-w-0">
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">

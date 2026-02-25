@@ -28,7 +28,7 @@ export default function TransactionModal({
     <>
       <div className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-sm" aria-hidden onClick={onClose} />
       <div
-        className="fixed inset-x-0 bottom-0 top-auto z-50 max-h-[92dvh] w-full overflow-y-auto rounded-t-3xl border border-b-0 border-slate-200 bg-white shadow-xl safe-area-padding safe-area-bottom sm:left-1/2 sm:right-auto sm:top-1/2 sm:bottom-auto sm:max-h-[85vh] sm:w-full sm:max-w-lg sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl sm:border-b"
+        className="fixed inset-x-0 bottom-0 top-auto z-50 max-h-[92dvh] w-full overflow-y-auto rounded-t-3xl border border-b-0 border-slate-200 bg-white shadow-xl content-padding-x safe-area-bottom sm:left-1/2 sm:right-auto sm:top-1/2 sm:bottom-auto sm:max-h-[85vh] sm:w-full sm:max-w-lg sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl sm:border-b"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="px-6 pt-6 sm:px-8 sm:pt-8">

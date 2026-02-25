@@ -21,7 +21,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className="scroll-smooth">
       <body
-        className={`${plusJakarta.variable} min-h-screen bg-white font-sans text-slate-900 antialiased safe-area-padding`}
+        className={`${plusJakarta.variable} min-h-screen bg-white font-sans text-slate-900 antialiased`}
         style={{ fontFamily: 'var(--font-plus-jakarta), system-ui, sans-serif' }}
       >
         <ClientLayout>{children}</ClientLayout>

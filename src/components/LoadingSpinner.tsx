@@ -7,7 +7,7 @@
 export default function LoadingSpinner() {
   return (
     <div
-      className="flex items-center justify-center px-4 py-12 safe-area-padding"
+      className="flex items-center justify-center content-padding-x py-12"
       style={{ minHeight: 'min(50dvh, 100dvh - 8rem)' }}
     >
       <div

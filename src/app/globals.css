@@ -29,12 +29,26 @@ body {
   font-family: var(--font-plus-jakarta), ui-sans-serif, system-ui, sans-serif;
   -webkit-tap-highlight-color: transparent;
   min-height: 100dvh;
+  overflow-x: hidden;
 }
 
 /* Safe area for notched devices (mobile-first) */
 .safe-area-padding {
   padding-left: env(safe-area-inset-left, 0);
   padding-right: env(safe-area-inset-right, 0);
+}
+
+/* Minimum horizontal padding so text never gets cut off at screen edges (use on main content) */
+.content-padding-x {
+  padding-left: max(2rem, env(safe-area-inset-left, 0));
+  padding-right: max(2rem, env(safe-area-inset-right, 0));
+}
+
+@media (min-width: 640px) {
+  .content-padding-x {
+    padding-left: max(1.5rem, env(safe-area-inset-left, 0));
+    padding-right: max(1.5rem, env(safe-area-inset-right, 0));
+  }
 }
 
 /* Prevent long words from overflowing on small screens */

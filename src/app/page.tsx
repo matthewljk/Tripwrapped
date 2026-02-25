@@ -34,7 +34,7 @@ export default function AddPage() {
   return (
     <>
       <div className="h-14 sm:h-16" />
-      <div className="mx-auto max-w-6xl px-6 pb-24 sm:pb-0 sm:px-6 safe-area-padding content-wrap">
+      <div className="mx-auto max-w-6xl content-padding-x pb-24 sm:pb-0 content-wrap">
         <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 py-4 sm:py-6">
           <TripSelector />
         </div>
