@@ -11,6 +11,7 @@ import heic2any from 'heic2any';
 
 const dataClient = generateClient<Schema>();
 const MAX_VIDEO_DURATION_SEC = 15;
+const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024; // 50 MB per file (photos + short videos)
 const ACCEPTED_TYPES = 'image/*,image/heic,image/heic-sequence,video/*';
 const THUMBNAIL_URL_EXPIRES_IN = 3600;
 
@@ -167,6 +168,10 @@ export default function MediaUpload({ activeTripId, onSuccess }: MediaUploadProp
         const isImage = file.type.startsWith('image/');
         if (!isImage && !isVideo) {
           errors.push(`${file.name}: not an image or video`);
+          continue;
+        }
+        if (file.size > MAX_FILE_SIZE_BYTES) {
+          errors.push(`${file.name}: over 50 MB`);
           continue;
         }
         if (isVideo) {

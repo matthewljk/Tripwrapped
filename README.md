@@ -114,6 +114,15 @@ amplify/
 
 ---
 
+## First-time user experience
+
+1. **Landing:** User sees the cover (video background, TripWrapped + “Collecting your memories”) and two actions: **Join a trip** and **Create a trip**. Both open the same auth flow.
+2. **Sign-in popup:** Clicking either opens a modal to **sign in** or **create an account** (Google or email). After they complete auth, the modal closes.
+3. **Username (first time only):** If they don’t have a username yet, a modal asks them to **choose a username** (how they’ll appear on photos/videos). After they save, they’re taken to the account page.
+4. **Account page (/trips):** They land on `/trips` to **join a trip** (by code) or **create a trip**, then use the rest of the app (upload, gallery, journal, O$P$, map).
+
+---
+
 ## Routes
 
 | Path           | Role |

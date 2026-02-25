@@ -117,7 +117,9 @@ body.layout-desktop main {
   overflow: hidden;
 }
 
-body:has([data-amplify-authenticator]) .login-video-background {
+/* Show video on landing (unauthenticated) or when auth modal is open */
+body:has([data-amplify-authenticator]) .login-video-background,
+body:has([data-landing]) .login-video-background {
   display: block;
 }
 
@@ -127,6 +129,11 @@ body:has([data-amplify-authenticator]) [data-amplify-authenticator] {
 }
 
 body:has([data-amplify-authenticator]) {
+  background: linear-gradient(180deg, #0f172a 0%, #1e3a5f 100%) !important;
+  min-height: 100dvh;
+}
+
+body:has([data-landing]) {
   background: linear-gradient(180deg, #0f172a 0%, #1e3a5f 100%) !important;
   min-height: 100dvh;
 }

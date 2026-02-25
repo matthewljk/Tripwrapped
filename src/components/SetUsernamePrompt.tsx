@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useUserProfile } from '@/hooks/useUserProfile';
 
 export default function SetUsernamePrompt() {
+  const router = useRouter();
   const { suggestedUsername, hasProfile, loading, setUsernameAndSave, profileAvailable } = useUserProfile();
   const [value, setValue] = useState('');
   const [saving, setSaving] = useState(false);
@@ -26,6 +28,7 @@ export default function SetUsernamePrompt() {
     setSaving(true);
     try {
       await setUsernameAndSave(trimmed);
+      router.replace('/trips');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save');
     } finally {
