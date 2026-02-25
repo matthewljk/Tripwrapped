@@ -14,7 +14,7 @@ export default function WrapItUpPage() {
 
   if (!hasTrip) {
     return (
-      <div className="flex min-h-dscreen-half flex-col items-center justify-center bg-slate-50 px-4 py-16 safe-area-padding sm:min-h-dscreen sm:py-24">
+      <div className="flex min-h-dscreen-half flex-col items-center justify-center bg-slate-50 px-5 py-16 safe-area-padding sm:min-h-dscreen sm:py-24">
         <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-10">
           <h2 className="text-2xl font-bold tracking-tight text-slate-900">Create or join a trip</h2>
           <p className="mt-3 text-slate-600">Trips have a shared gallery and map. Create or join a trip to see locations.</p>
@@ -26,7 +26,7 @@ export default function WrapItUpPage() {
 
   if (!token) {
     return (
-      <div className="flex min-h-dscreen-half flex-col items-center justify-center bg-slate-50 px-4 py-16 safe-area-padding">
+      <div className="flex min-h-dscreen-half flex-col items-center justify-center bg-slate-50 px-5 py-16 safe-area-padding">
         <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
           <h2 className="text-2xl font-bold tracking-tight text-slate-900">Map not configured</h2>
           <p className="mt-3 text-slate-600">
@@ -49,12 +49,12 @@ export default function WrapItUpPage() {
   return (
     <>
       <div className="h-14 sm:h-16" />
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 safe-area-padding">
-        <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 py-6">
+      <div className="mx-auto max-w-6xl px-5 sm:px-6 safe-area-padding">
+        <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 py-4 sm:py-6">
           <TripSelector />
         </div>
       </div>
-      <div className="h-[calc(100dvh-8rem)] min-h-[320px] w-full">
+      <div className="h-[calc(100dvh-9rem)] min-h-[280px] w-full sm:min-h-[320px]">
         <TripMap activeTripId={activeTripId} mapboxAccessToken={token} />
       </div>
     </>

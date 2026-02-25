@@ -34,29 +34,29 @@ export default function AddPage() {
   return (
     <>
       <div className="h-14 sm:h-16" />
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 safe-area-padding">
-        <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 py-6">
+      <div className="mx-auto max-w-6xl px-5 pb-24 sm:pb-0 sm:px-6 safe-area-padding">
+        <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 py-4 sm:py-6">
           <TripSelector />
         </div>
 
         {/* Section 1: Add photo or video — one click opens upload */}
-        <section className="border-b border-slate-100 py-8 sm:py-10">
+        <section className="border-b border-slate-100 py-6 sm:py-10">
           <h2 className="text-lg font-bold tracking-tight text-slate-900 sm:text-xl">Photo or video</h2>
-          <p className="mt-1 text-slate-600">Add photos and videos to your trip. Images and short videos (15s or less) only.</p>
+          <p className="mt-1 text-sm sm:text-base text-slate-600">Add photos and videos to your trip. Images and short videos (15s or less) only.</p>
           <button
             type="button"
             onClick={() => setUploadOpen(true)}
-            className="btn-primary mt-4"
+            className="btn-primary mt-4 w-full sm:w-auto"
           >
             Add photo or video
           </button>
         </section>
 
         {/* Section 2: Add transaction — form shown directly, no menu */}
-        <section className="py-8 sm:py-10">
+        <section className="py-6 sm:py-10">
           <h2 className="text-lg font-bold tracking-tight text-slate-900 sm:text-xl">Add transaction</h2>
-          <p className="mt-1 text-slate-600">Log an expense and split it with trip members.</p>
-          <div className="mt-6 max-w-xl">
+          <p className="mt-1 text-sm sm:text-base text-slate-600">Log an expense and split it with trip members.</p>
+          <div className="mt-4 sm:mt-6 w-full max-w-xl">
             <TransactionForm
               activeTripId={activeTripId}
               baseCurrency={activeTrip?.baseCurrency ?? null}

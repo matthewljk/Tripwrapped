@@ -40,9 +40,9 @@ export default function ProfilePage() {
   return (
     <>
       <div className="h-14 sm:h-16" />
-      <div className="mx-auto max-w-xl px-4 py-8 sm:px-6 sm:py-12 safe-area-padding">
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">Profile</h1>
-        <p className="mt-2 text-slate-600">Manage your username and account settings.</p>
+      <div className="mx-auto max-w-xl px-5 pb-24 py-8 sm:pb-0 sm:px-6 sm:py-12 safe-area-padding">
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-2xl">Profile</h1>
+        <p className="mt-2 text-sm text-slate-600 sm:text-base">Manage your username and account settings.</p>
         {!profileAvailable && (
           <div className="mt-8 rounded-2xl border border-amber-200 bg-amber-50 p-6">
             <p className="font-medium text-amber-800">Profile (username) is not available yet</p>
@@ -50,7 +50,7 @@ export default function ProfilePage() {
           </div>
         )}
         {profileAvailable && (
-          <section className="card mt-8 p-6">
+          <section className="card mt-6 p-4 sm:mt-8 sm:p-6">
             <h2 className="text-lg font-semibold text-slate-900">Username</h2>
             <p className="mt-1 text-sm text-slate-600">This is how you appear on photos and videos you upload.</p>
             {loadError && <p className="mt-2 text-sm font-medium text-red-600">{loadError}</p>}
@@ -74,7 +74,7 @@ export default function ProfilePage() {
             </form>
           </section>
         )}
-        <section className="card mt-8 p-6">
+        <section className="card mt-6 p-4 sm:mt-8 sm:p-6">
           <h2 className="text-lg font-semibold text-slate-900">Password</h2>
           <p className="mt-1 text-sm text-slate-600">Use &quot;Forgot password&quot; on the sign-in screen or your identity provider (e.g. Google account settings) to change your password.</p>
         </section>

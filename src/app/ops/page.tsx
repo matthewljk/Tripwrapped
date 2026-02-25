@@ -133,10 +133,10 @@ export default function OpsPage() {
 
   if (!hasTrip) {
     return (
-      <div className="mx-auto max-w-2xl px-4 pb-28 pt-20 sm:pb-24 sm:pt-24 sm:px-6 safe-area-padding">
-        <h1 className="text-3xl font-bold tracking-tight text-slate-900">O$P$</h1>
-        <p className="mt-2 text-slate-600">Create or join a trip to track expenses and splits.</p>
-        <Link href="/trips" className="btn-primary mt-6 inline-block">
+      <div className="mx-auto max-w-2xl px-5 pb-28 pt-20 sm:pb-24 sm:pt-24 sm:px-6 safe-area-padding">
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">O$P$</h1>
+        <p className="mt-2 text-sm text-slate-600 sm:text-base">Create or join a trip to track expenses and splits.</p>
+        <Link href="/trips" className="btn-primary mt-6 inline-block w-full sm:w-auto">
           Create or join a trip
         </Link>
       </div>
@@ -144,11 +144,11 @@ export default function OpsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-4 pb-28 pt-20 sm:pb-24 sm:pt-24 sm:px-6 safe-area-padding">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 py-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900">O$P$</h1>
-          <p className="mt-1 text-slate-600">Split expenses and see who owes whom</p>
+    <div className="mx-auto max-w-2xl px-5 pb-28 pt-20 sm:pb-24 sm:pt-24 sm:px-6 safe-area-padding">
+      <div className="flex flex-col gap-4 border-b border-slate-100 py-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3 sm:py-6">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">O$P$</h1>
+          <p className="mt-1 text-sm text-slate-600 sm:text-base">Split expenses and see who owes whom</p>
         </div>
         <TripSelector />
       </div>
@@ -160,7 +160,7 @@ export default function OpsPage() {
       ) : (
         <>
           {/* Net balance for current user */}
-          <section className="card mt-8 p-6">
+          <section className="card mt-6 p-4 sm:mt-8 sm:p-6">
             <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Your balance</h2>
             {transactions.length > 0 && !tripBaseCurrency && (
               <p className="mt-1 text-xs text-slate-500">Amounts in {baseCurrency} (from transactions). Set trip currency in Trips for a fixed base.</p>
@@ -183,7 +183,7 @@ export default function OpsPage() {
           </section>
 
           {/* Budget summary: total expense, % utilised, expense per pax, expand for breakdown */}
-          <section className="card mt-6 p-6">
+          <section className="card mt-4 p-4 sm:mt-6 sm:p-6">
             <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Budget</h2>
             {transactions.length === 0 ? (
               <p className="mt-2 text-slate-600">No transactions yet. Add some from the Add page.</p>
@@ -238,16 +238,16 @@ export default function OpsPage() {
 
           {/* Simplified settlements */}
           {settlements.length > 0 && (
-            <section className="card mt-6 p-6">
+            <section className="card mt-4 p-4 sm:mt-6 sm:p-6">
               <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Settle up</h2>
               <p className="mt-0.5 text-xs text-slate-500">Minimal transfers to clear debts</p>
               <ul className="mt-4 space-y-3">
                 {settlements.map((s: Settlement, i: number) => (
-                  <li key={i} className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-2 text-sm">
-                    <span className="text-slate-700">
+                  <li key={i} className="flex flex-col gap-1 rounded-xl bg-slate-50 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between sm:py-2">
+                    <span className="min-w-0 truncate text-slate-700">
                       {displayName(s.fromUserId)} → {displayName(s.toUserId)}
                     </span>
-                    <span className="font-medium text-slate-900">{formatAmount(s.amount, baseCurrency)}</span>
+                    <span className="flex-shrink-0 font-medium text-slate-900">{formatAmount(s.amount, baseCurrency)}</span>
                   </li>
                 ))}
               </ul>
@@ -255,20 +255,20 @@ export default function OpsPage() {
           )}
 
           {/* Transaction history by day */}
-          <section className="mt-8">
-            <h2 className="text-lg font-bold text-slate-900">Transaction history</h2>
+          <section className="mt-6 sm:mt-8">
+            <h2 className="text-base font-bold text-slate-900 sm:text-lg">Transaction history</h2>
             {dateKeys.length === 0 ? (
-              <p className="mt-2 text-slate-600">No transactions yet.</p>
+              <p className="mt-2 text-sm text-slate-600">No transactions yet.</p>
             ) : (
-              <div className="mt-4 space-y-6">
+              <div className="mt-4 space-y-4 sm:space-y-6">
                 {dateKeys.map((dateKey) => (
-                  <div key={dateKey} className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
-                    <div className="border-b border-slate-100 bg-slate-50/80 px-4 py-2 text-sm font-medium text-slate-700">
+                  <div key={dateKey} className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                    <div className="border-b border-slate-100 bg-slate-50/80 px-3 py-2 text-sm font-medium text-slate-700 sm:px-4">
                       {formatDateLabel(dateKey)}
                     </div>
                     <ul className="divide-y divide-slate-100">
                       {(byDay.get(dateKey) ?? []).map((tx) => (
-                        <li key={tx.id} className="flex items-center justify-between gap-4 px-4 py-3 text-sm">
+                        <li key={tx.id} className="flex flex-col gap-0.5 px-3 py-2.5 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-4 sm:py-3">
                           <div className="min-w-0 flex-1">
                             <p className="font-medium text-slate-900 truncate">
                               {tx.description?.trim() || 'Expense'}

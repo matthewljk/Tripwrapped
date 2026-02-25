@@ -41,6 +41,11 @@ body {
   padding-bottom: env(safe-area-inset-bottom, 0);
 }
 
+/* Optional: add safe area to bottom of an element (e.g. lightbox actions) */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
 /* Dynamic viewport: adapts when mobile browser UI shows/hides */
 .min-h-dscreen {
   min-height: 100dvh;

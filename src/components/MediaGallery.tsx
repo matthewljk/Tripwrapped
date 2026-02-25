@@ -170,7 +170,7 @@ const GalleryCard = memo(function GalleryCard({
 }: GalleryCardProps) {
   const isFav = Boolean(item.isFavorite);
   return (
-    <div className="group relative mb-5 block w-full break-inside-avoid lg:mb-6">
+    <div className="group relative mb-4 block w-full break-inside-avoid sm:mb-5 lg:mb-6">
       <div
         role="button"
         tabIndex={0}
@@ -212,26 +212,26 @@ const GalleryCard = memo(function GalleryCard({
             </>
           )}
           {selectMode && (
-            <div className="absolute left-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-lg bg-slate-900/70 text-white" aria-hidden>
+            <div className="absolute left-3 top-3 z-10 flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900/80 text-white shadow sm:left-2 sm:top-2 sm:h-8 sm:w-8 sm:rounded-lg" aria-hidden>
               {selected ? (
-                <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                <svg className="h-5 w-5 sm:h-5 sm:w-5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
               ) : (
                 <div className="h-5 w-5 rounded border-2 border-white" />
               )}
             </div>
           )}
           {!selectMode && (
-            <div className="absolute bottom-2 left-2 z-10" onClick={(e) => e.stopPropagation()}>
+            <div className="absolute bottom-3 left-3 z-10 rounded-lg bg-slate-900/60 p-0.5 sm:bottom-2 sm:left-2 sm:bg-transparent sm:p-0" onClick={(e) => e.stopPropagation()}>
               <UploaderAvatar username={item.uploadedByUsername} />
             </div>
           )}
           {!selectMode && (
-            <div className="absolute right-2 top-2 z-10 flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+            <div className="absolute right-3 top-3 z-10 flex items-center gap-2 rounded-lg bg-slate-900/60 p-1 sm:right-2 sm:top-2 sm:gap-1.5 sm:bg-transparent sm:p-0" onClick={(e) => e.stopPropagation()}>
               <button
                 type="button"
                 onClick={() => onToggleFavorite(item)}
                 disabled={favoritingId === item.id}
-                className={`flex h-9 w-9 items-center justify-center rounded-lg shadow hover:opacity-90 disabled:opacity-50 ${isFav ? 'bg-rose-500/90 text-white' : 'bg-slate-900/70 text-white hover:bg-slate-800/80'}`}
+                className={`flex h-10 w-10 min-h-[44px] min-w-[44px] items-center justify-center rounded-lg shadow hover:opacity-90 disabled:opacity-50 sm:h-9 sm:w-9 sm:min-h-0 sm:min-w-0 ${isFav ? 'bg-rose-500/90 text-white' : 'bg-slate-900/70 text-white hover:bg-slate-800/80'}`}
                 aria-label={isFav ? 'Unfavorite' : 'Favorite'}
               >
                 {favoritingId === item.id ? (
@@ -244,7 +244,7 @@ const GalleryCard = memo(function GalleryCard({
                 type="button"
                 onClick={() => onDownload(item)}
                 disabled={downloadingId === item.id}
-                className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-900/70 text-white shadow hover:bg-slate-800/80 disabled:opacity-50"
+                className="flex h-10 w-10 min-h-[44px] min-w-[44px] items-center justify-center rounded-lg bg-slate-900/70 text-white shadow hover:bg-slate-800/80 disabled:opacity-50 sm:h-9 sm:w-9 sm:min-h-0 sm:min-w-0"
                 aria-label="Download"
               >
                 {downloadingId === item.id ? (
@@ -258,7 +258,7 @@ const GalleryCard = memo(function GalleryCard({
                   type="button"
                   onClick={() => onDelete(item)}
                   disabled={deletingId === item.id}
-                  className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-900/70 text-white shadow hover:bg-slate-800/80 disabled:opacity-50"
+                  className="flex h-10 w-10 min-h-[44px] min-w-[44px] items-center justify-center rounded-lg bg-slate-900/70 text-white shadow hover:bg-slate-800/80 disabled:opacity-50 sm:h-9 sm:w-9 sm:min-h-0 sm:min-w-0"
                   aria-label="Delete"
                 >
                   {deletingId === item.id ? (
@@ -310,8 +310,8 @@ function GalleryToolbar({
   onSortChange?: (sort: SortOption) => void;
 }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3">
-      <span className="text-sm text-slate-500">
+    <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+      <span className="text-xs text-slate-500 sm:text-sm">
         {lastRefreshedAt ? <>Last refreshed {formatLastRefreshed(lastRefreshedAt)}</> : '—'}
       </span>
       <div className="flex flex-wrap items-center gap-2">
@@ -319,7 +319,7 @@ function GalleryToolbar({
           <select
             value={sortOption}
             onChange={(e) => onSortChange(e.target.value as SortOption)}
-            className="min-h-[44px] rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
+            className="min-h-[44px] min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 sm:flex-initial"
             aria-label="Sort by"
           >
             <option value="date-desc">Newest first</option>
@@ -732,8 +732,9 @@ export default function MediaGallery({ activeTripId, activeTrip, userId, refresh
 
   if (loading && rawList.length === 0) {
     return (
-      <div className="flex min-h-[40vh] items-center justify-center">
-        <div className="h-12 w-12 animate-pulse rounded-2xl bg-blue-100" />
+      <div className="flex min-h-[50vh] flex-col items-center justify-center gap-6 py-12">
+        <div className="h-14 w-14 animate-pulse rounded-2xl bg-slate-100" aria-hidden />
+        <p className="text-sm text-slate-500">Loading gallery…</p>
       </div>
     );
   }
@@ -748,8 +749,8 @@ export default function MediaGallery({ activeTripId, activeTrip, userId, refresh
   }
 
   if (rawList.length === 0) {
-    return (
-      <div className="space-y-6">
+  return (
+    <div className="space-y-8">
         <GalleryToolbar
           lastRefreshedAt={lastRefreshedAt}
           onRefresh={handleRefresh}
@@ -760,7 +761,7 @@ export default function MediaGallery({ activeTripId, activeTrip, userId, refresh
           sortOption={sortOption}
           onSortChange={setSortOption}
         />
-        <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-12 text-center">
+        <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-8 text-center sm:p-12">
           <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-100 text-3xl">📷</div>
           <p className="text-lg font-semibold text-slate-900">No photos or videos yet</p>
           <p className="text-slate-600">Add your first from the Upload page.</p>
@@ -890,10 +891,10 @@ export default function MediaGallery({ activeTripId, activeTrip, userId, refresh
         downloadingMultiple={viewMode === 'grid' ? downloadingMultiple : undefined}
       />
       {viewMode === 'metadata' ? (
-        <div className="pb-24 pt-2">{metadataTable}</div>
+        <div className="pb-24 pt-6 overflow-x-auto sm:pt-2">{metadataTable}</div>
       ) : (
         <>
-          <div className="columns-2 gap-5 pb-6 pt-2 md:columns-3 lg:columns-4 lg:gap-6">
+          <div className="columns-2 gap-4 pb-6 pt-8 sm:gap-5 sm:pt-4 md:columns-3 lg:columns-4 lg:gap-6">
             {displayedItems.map((item) => (
               <GalleryCard
                 key={item.id}
@@ -935,11 +936,11 @@ export default function MediaGallery({ activeTripId, activeTrip, userId, refresh
         </>
       )}
       {lightboxItem?.url && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 p-4 backdrop-blur-sm" onClick={closeLightbox}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 p-4 backdrop-blur-sm safe-area-padding" onClick={closeLightbox}>
           <div className="relative flex max-h-full max-w-full items-center justify-center" onClick={(e) => e.stopPropagation()}>
-            {isImage(lightboxItem.path) && <img src={lightboxItem.url} alt="" className="max-h-[90vh] w-auto max-w-full rounded-xl object-contain shadow-2xl" />}
-            {isVideo(lightboxItem.path) && <video src={lightboxItem.url} controls autoPlay className="max-h-[90vh] max-w-full rounded-xl shadow-2xl" />}
-            <div className="absolute -bottom-12 left-1/2 flex -translate-x-1/2 flex-wrap items-center justify-center gap-3">
+            {isImage(lightboxItem.path) && <img src={lightboxItem.url} alt="" className="max-h-[85vh] w-auto max-w-full rounded-xl object-contain shadow-2xl sm:max-h-[90vh]" />}
+            {isVideo(lightboxItem.path) && <video src={lightboxItem.url} controls autoPlay className="max-h-[85vh] max-w-full rounded-xl shadow-2xl sm:max-h-[90vh]" />}
+            <div className="absolute -bottom-14 left-1/2 flex -translate-x-1/2 flex-wrap items-center justify-center gap-2 pb-safe sm:bottom-0 sm:gap-3">
               <button
                 type="button"
                 onClick={() => handleToggleFavorite(lightboxItem)}
@@ -980,7 +981,7 @@ export default function MediaGallery({ activeTripId, activeTrip, userId, refresh
               )}
             </div>
           </div>
-          <button type="button" onClick={closeLightbox} className="absolute right-4 top-4 rounded-lg bg-slate-800/80 p-2 text-white hover:bg-slate-700" aria-label="Close">✕</button>
+          <button type="button" onClick={closeLightbox} className="absolute right-4 top-4 min-h-[44px] min-w-[44px] rounded-lg bg-slate-800/80 p-2.5 text-white hover:bg-slate-700" aria-label="Close" style={{ top: 'max(0.75rem, env(safe-area-inset-top, 0px))', right: 'max(0.75rem, env(safe-area-inset-right, 0px))' }}>✕</button>
         </div>
       )}
     </>

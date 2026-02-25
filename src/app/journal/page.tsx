@@ -335,14 +335,14 @@ export default function JournalPage() {
 
   if (!hasTrip) {
     return (
-      <div className="mx-auto max-w-2xl px-4 pb-28 pt-20 sm:pb-24 sm:pt-24 sm:px-6 safe-area-padding">
-        <h1 className="text-3xl font-bold tracking-tight text-slate-900">
+      <div className="mx-auto max-w-2xl px-5 pb-28 pt-20 sm:pb-24 sm:pt-24 sm:px-6 safe-area-padding">
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
           Daily Journal
         </h1>
-        <p className="mt-2 text-slate-600">
+        <p className="mt-2 text-sm text-slate-600 sm:text-base">
           Create or join a trip to see your days and locations.
         </p>
-        <Link href="/trips" className="btn-primary mt-6 inline-block">
+        <Link href="/trips" className="btn-primary mt-6 inline-block w-full sm:w-auto">
           Create or join a trip
         </Link>
       </div>
@@ -350,13 +350,13 @@ export default function JournalPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-4 pb-28 pt-20 sm:pb-24 sm:pt-24 sm:px-6 safe-area-padding">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 py-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900">
+    <div className="mx-auto max-w-2xl px-5 pb-28 pt-20 sm:pb-24 sm:pt-24 sm:px-6 safe-area-padding">
+      <div className="flex flex-col gap-4 border-b border-slate-100 py-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3 sm:py-6">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
             Daily Journal
           </h1>
-          <p className="mt-1 text-slate-600">
+          <p className="mt-1 text-sm text-slate-600 sm:text-base">
             Your trip by day and location
           </p>
         </div>
@@ -378,7 +378,7 @@ export default function JournalPage() {
           </Link>
         </div>
       ) : (
-        <div className="mt-8 space-y-8">
+        <div className="mt-6 space-y-6 sm:mt-8 sm:space-y-8">
           {dateKeys.map((dateKey) => {
             const dayMedia = byDate.get(dateKey) ?? [];
             const poisStructure = getPOIsForDay(dayMedia, 100);
