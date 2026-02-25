@@ -21,19 +21,28 @@ type MediaItem = {
   lat?: number | null;
   lng?: number | null;
   timestamp?: string | null;
+  isFavorite?: boolean | null;
+  locationName?: string | null;
+  rating?: number | null;
+  review?: string | null;
+  visited?: boolean | null;
 };
 
 function isImage(path: string): boolean {
-  return /\.(jpe?g|png|gif|webp|avif|bmp|svg)$/i.test(path);
+  return /\.(jpe?g|png|gif|webp|avif|bmp|svg|heic)$/i.test(path);
+}
+
+function isHeic(path: string): boolean {
+  return /\.(heic|heif)$/i.test(path ?? '');
 }
 
 function isVideo(path: string): boolean {
   return /\.(mp4|webm|ogg|mov|avi|mkv)$/i.test(path);
 }
 
-type SortOption = 'date-desc' | 'date-asc' | 'type-desc' | 'type-asc' | 'user-asc' | 'user-desc';
+type SortOption = 'date-desc' | 'date-asc' | 'type-desc' | 'type-asc' | 'user-asc' | 'user-desc' | 'favorites-first';
 
-function sortMediaItems<T extends { path: string; timestamp?: string | null; uploadedByUsername?: string | null }>(
+function sortMediaItems<T extends { path: string; timestamp?: string | null; uploadedByUsername?: string | null; isFavorite?: boolean | null }>(
   list: T[],
   sort: SortOption
 ): T[] {
@@ -51,6 +60,13 @@ function sortMediaItems<T extends { path: string; timestamp?: string | null; upl
       return arr.sort((a, b) => (a.uploadedByUsername ?? '').localeCompare(b.uploadedByUsername ?? ''));
     case 'user-desc':
       return arr.sort((a, b) => (b.uploadedByUsername ?? '').localeCompare(a.uploadedByUsername ?? ''));
+    case 'favorites-first':
+      return arr.sort((a, b) => {
+        const aFav = a.isFavorite ? 1 : 0;
+        const bFav = b.isFavorite ? 1 : 0;
+        if (bFav !== aFav) return bFav - aFav;
+        return (b.timestamp ?? '').localeCompare(a.timestamp ?? '');
+      });
     default:
       return arr;
   }
@@ -71,6 +87,41 @@ function formatLastRefreshed(date: Date): string {
   if (sec < 3600) return `${Math.floor(sec / 60)}m ago`;
   if (sec < 86400) return `${Math.floor(sec / 3600)}h ago`;
   return date.toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' });
+}
+
+function MetadataThumb({ path }: { path: string }) {
+  const [url, setUrl] = useState<string | null>(null);
+  const skipLoad = isHeic(path);
+  useEffect(() => {
+    if (!path || skipLoad) return;
+    let cancelled = false;
+    getUrl({ path, options: { expiresIn: URL_EXPIRES_IN } })
+      .then(({ url: u }) => {
+        if (!cancelled) setUrl(u.toString());
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [path, skipLoad]);
+  if (!url) {
+    return (
+      <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-400" aria-hidden>
+        <span className="text-lg">{skipLoad ? '🖼' : '📷'}</span>
+      </div>
+    );
+  }
+  return (
+    <div className="h-11 w-11 flex-shrink-0 overflow-hidden rounded-lg bg-slate-100">
+      {isImage(path) && !skipLoad ? (
+        <img src={url} alt="" className="h-full w-full object-cover" loading="lazy" />
+      ) : isVideo(path) ? (
+        <video src={url} className="h-full w-full object-cover" muted playsInline preload="metadata" aria-hidden />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center text-lg">📷</div>
+      )}
+    </div>
+  );
 }
 
 function UploaderAvatar({ username }: { username: string | null | undefined }) {
@@ -94,11 +145,13 @@ type GalleryCardProps = {
   selectMode: boolean;
   downloadingId: string | null;
   deletingId: string | null;
+  favoritingId: string | null;
   canDelete: boolean;
   onCardClick: (item: MediaItem) => void;
   onToggleSelection: (id: string) => void;
   onDownload: (item: MediaItem) => void;
   onDelete: (item: MediaItem) => void;
+  onToggleFavorite: (item: MediaItem) => void;
 };
 
 const GalleryCard = memo(function GalleryCard({
@@ -107,12 +160,15 @@ const GalleryCard = memo(function GalleryCard({
   selectMode,
   downloadingId,
   deletingId,
+  favoritingId,
   canDelete,
   onCardClick,
   onToggleSelection,
   onDownload,
   onDelete,
+  onToggleFavorite,
 }: GalleryCardProps) {
+  const isFav = Boolean(item.isFavorite);
   return (
     <div className="group relative mb-5 block w-full break-inside-avoid lg:mb-6">
       <div
@@ -130,12 +186,7 @@ const GalleryCard = memo(function GalleryCard({
       >
         <div className="relative rounded-2xl border border-slate-200 bg-white shadow-sm transition-shadow duration-200 group-hover:shadow-md">
           {!item.url ? (
-            <>
-              <div className="aspect-square w-full" aria-hidden />
-              <div className="absolute inset-0 z-0 flex items-center justify-center overflow-hidden rounded-2xl bg-slate-100">
-                <span className="h-8 w-8 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600" aria-hidden />
-              </div>
-            </>
+            <div className="aspect-square w-full rounded-2xl bg-slate-100 animate-pulse" aria-hidden />
           ) : (
             <>
               {isImage(item.path) && (
@@ -176,6 +227,19 @@ const GalleryCard = memo(function GalleryCard({
           )}
           {!selectMode && (
             <div className="absolute right-2 top-2 z-10 flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+              <button
+                type="button"
+                onClick={() => onToggleFavorite(item)}
+                disabled={favoritingId === item.id}
+                className={`flex h-9 w-9 items-center justify-center rounded-lg shadow hover:opacity-90 disabled:opacity-50 ${isFav ? 'bg-rose-500/90 text-white' : 'bg-slate-900/70 text-white hover:bg-slate-800/80'}`}
+                aria-label={isFav ? 'Unfavorite' : 'Favorite'}
+              >
+                {favoritingId === item.id ? (
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                ) : (
+                  <svg className="h-5 w-5" fill={isFav ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
+                )}
+              </button>
               <button
                 type="button"
                 onClick={() => onDownload(item)}
@@ -260,6 +324,7 @@ function GalleryToolbar({
           >
             <option value="date-desc">Newest first</option>
             <option value="date-asc">Oldest first</option>
+            <option value="favorites-first">Favorites first</option>
             <option value="type-desc">Photos first</option>
             <option value="type-asc">Videos first</option>
             <option value="user-asc">User A–Z</option>
@@ -352,6 +417,7 @@ export default function MediaGallery({ activeTripId, activeTrip, userId, refresh
   const [refreshButtonLabel, setRefreshButtonLabel] = useState('Refresh');
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [favoritingId, setFavoritingId] = useState<string | null>(null);
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [downloadingMultiple, setDownloadingMultiple] = useState(false);
@@ -467,6 +533,11 @@ export default function MediaGallery({ activeTripId, activeTrip, userId, refresh
           lat: m.lat ?? null,
           lng: m.lng ?? null,
           timestamp: m.timestamp ?? null,
+          isFavorite: m.isFavorite ?? null,
+          locationName: m.locationName ?? null,
+          rating: m.rating ?? null,
+          review: m.review ?? null,
+          visited: m.visited ?? null,
         }));
         setRawList(list);
         setUrlMap({});
@@ -501,40 +572,54 @@ export default function MediaGallery({ activeTripId, activeTrip, userId, refresh
     loadRawList(refreshTrigger > 0);
   }, [loadRawList, refreshTrigger]);
 
-  // Fetch signed URLs only for currently displayed range
+  // Fetch signed URLs in small batches to avoid overload and reduce failed loads
+  const BATCH_SIZE = 5;
   useEffect(() => {
     const sorted = sortMediaItems(rawList, sortOption);
     const idsToLoad = sorted
       .slice(0, displayedCount)
       .map((m) => m.id)
-      .filter((id) => !urlMap[id]);
+      .filter((id) => !urlMap[id])
+      .filter((id) => {
+        const m = rawList.find((x) => x.id === id);
+        return m && !isHeic(m.path);
+      });
     if (idsToLoad.length === 0) {
       setLoadingMoreUrls(false);
       return;
     }
     setLoadingMoreUrls(true);
-    Promise.all(
-      idsToLoad.map(async (id) => {
-        const m = rawList.find((x) => x.id === id);
-        if (!m) return null;
-        try {
-          const { url } = await getUrl({ path: m.path, options: { expiresIn: URL_EXPIRES_IN } });
-          return { id, url: url.toString() };
-        } catch {
-          return null;
-        }
-      })
-    ).then((results) => {
-      setUrlMap((prev) => {
-        const next = { ...prev };
-        results.forEach((r) => {
-          if (r) next[r.id] = r.url;
+    let cancelled = false;
+    (async () => {
+      for (let i = 0; i < idsToLoad.length && !cancelled; i += BATCH_SIZE) {
+        const batch = idsToLoad.slice(i, i + BATCH_SIZE);
+        const results = await Promise.all(
+          batch.map(async (id) => {
+            const m = rawList.find((x) => x.id === id);
+            if (!m) return null;
+            try {
+              const { url } = await getUrl({ path: m.path, options: { expiresIn: URL_EXPIRES_IN } });
+              return { id, url: url.toString() };
+            } catch {
+              return null;
+            }
+          })
+        );
+        if (cancelled) return;
+        setUrlMap((prev) => {
+          const next = { ...prev };
+          results.forEach((r) => {
+            if (r) next[r.id] = r.url;
+          });
+          return next;
         });
-        return next;
-      });
-      setLoadingMoreUrls(false);
-    });
-  }, [rawList, sortOption, displayedCount]); // urlMap omitted to avoid loop; we only need to load missing ids
+      }
+      if (!cancelled) setLoadingMoreUrls(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [rawList, sortOption, displayedCount]); // urlMap omitted to avoid loop
 
   const handleRefresh = useCallback(() => {
     setRefreshButtonLabel('Refreshing…');
@@ -554,6 +639,32 @@ export default function MediaGallery({ activeTripId, activeTrip, userId, refresh
 
   const openLightbox = useCallback((item: MediaItem) => setLightboxItem(item), []);
   const closeLightbox = useCallback(() => setLightboxItem(null), []);
+
+  const handleToggleFavorite = useCallback(
+    async (item: MediaItem) => {
+      setFavoritingId(item.id);
+      setError(null);
+      const next = !item.isFavorite;
+      try {
+        await dataClient.models.Media.update({
+          id: item.id,
+          isFavorite: next,
+        });
+        setRawList((prev) =>
+          prev.map((i) => (i.id === item.id ? { ...i, isFavorite: next } : i))
+        );
+        setLightboxItem((prev) =>
+          prev?.id === item.id ? { ...prev, isFavorite: next } : prev
+        );
+        invalidateListCache();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to update favorite');
+      } finally {
+        setFavoritingId(null);
+      }
+    },
+    [invalidateListCache]
+  );
 
   const handleDownload = useCallback(async (item: MediaItem) => {
     setDownloadingId(item.id);
@@ -663,11 +774,15 @@ export default function MediaGallery({ activeTripId, activeTrip, userId, refresh
       <table className="w-full min-w-[640px] text-left text-sm">
         <thead>
           <tr className="border-b border-slate-200 bg-slate-50">
+            <th className="sticky left-0 z-10 w-14 bg-slate-50 px-2 py-3 font-semibold text-slate-700 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.08)]">Preview</th>
             <th className="px-4 py-3 font-semibold text-slate-700">File</th>
             <th className="px-4 py-3 font-semibold text-slate-700">Uploaded by</th>
+            <th className="px-4 py-3 font-semibold text-slate-700">Favorite</th>
             <th className="px-4 py-3 font-semibold text-slate-700">Lat</th>
             <th className="px-4 py-3 font-semibold text-slate-700">Lng</th>
             <th className="px-4 py-3 font-semibold text-slate-700">Timestamp</th>
+            <th className="px-4 py-3 font-semibold text-slate-700">Location</th>
+            <th className="px-4 py-3 font-semibold text-slate-700">Rating</th>
             <th className="px-4 py-3 font-semibold text-slate-700">Metadata</th>
             <th className="px-4 py-3 font-semibold text-slate-700">Actions</th>
           </tr>
@@ -681,11 +796,31 @@ export default function MediaGallery({ activeTripId, activeTrip, userId, refresh
             const itemCanDelete = canDelete(item);
             return (
               <tr key={item.id} className="border-b border-slate-100 last:border-0">
+                <td className="sticky left-0 z-10 w-14 bg-white px-2 py-2 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.08)]">
+                  <MetadataThumb path={item.path} />
+                </td>
                 <td className="px-4 py-3 font-mono text-slate-800">{filename}</td>
                 <td className="px-4 py-3 text-slate-600">{item.uploadedByUsername ?? '—'}</td>
+                <td className="px-4 py-3">
+                  <button
+                    type="button"
+                    onClick={() => handleToggleFavorite(item)}
+                    disabled={favoritingId === item.id}
+                    className={`inline-flex h-8 w-8 items-center justify-center rounded-lg border disabled:opacity-50 ${item.isFavorite ? 'border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100' : 'border-slate-200 bg-white text-slate-400 hover:bg-slate-50 hover:text-slate-600'}`}
+                    aria-label={item.isFavorite ? 'Unfavorite' : 'Favorite'}
+                  >
+                    {favoritingId === item.id ? (
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-rose-400 border-t-transparent" />
+                    ) : (
+                      <svg className="h-4 w-4" fill={item.isFavorite ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
+                    )}
+                  </button>
+                </td>
                 <td className="px-4 py-3 font-mono text-slate-600">{item.lat != null ? item.lat.toFixed(5) : '—'}</td>
                 <td className="px-4 py-3 font-mono text-slate-600">{item.lng != null ? item.lng.toFixed(5) : '—'}</td>
                 <td className="px-4 py-3 text-slate-600">{item.timestamp ?? '—'}</td>
+                <td className="px-4 py-3 max-w-[140px] truncate text-slate-600" title={item.locationName ?? undefined}>{item.locationName ?? '—'}</td>
+                <td className="px-4 py-3 text-slate-600">{item.rating != null && item.rating >= 1 && item.rating <= 5 ? `${'★'.repeat(item.rating)}` : '—'}</td>
                 <td className="px-4 py-3">
                   {hasAny ? (
                     <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-800">
@@ -767,11 +902,13 @@ export default function MediaGallery({ activeTripId, activeTrip, userId, refresh
                 selectMode={selectMode}
                 downloadingId={downloadingId}
                 deletingId={deletingId}
+                favoritingId={favoritingId}
                 canDelete={canDelete(item)}
                 onCardClick={openLightbox}
                 onToggleSelection={toggleSelection}
                 onDownload={handleDownload}
                 onDelete={handleDelete}
+                onToggleFavorite={handleToggleFavorite}
               />
             ))}
           </div>
@@ -803,6 +940,20 @@ export default function MediaGallery({ activeTripId, activeTrip, userId, refresh
             {isImage(lightboxItem.path) && <img src={lightboxItem.url} alt="" className="max-h-[90vh] w-auto max-w-full rounded-xl object-contain shadow-2xl" />}
             {isVideo(lightboxItem.path) && <video src={lightboxItem.url} controls autoPlay className="max-h-[90vh] max-w-full rounded-xl shadow-2xl" />}
             <div className="absolute -bottom-12 left-1/2 flex -translate-x-1/2 flex-wrap items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => handleToggleFavorite(lightboxItem)}
+                disabled={favoritingId === lightboxItem.id}
+                className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium disabled:opacity-50 ${lightboxItem.isFavorite ? 'bg-rose-600 text-white hover:bg-rose-700' : 'bg-slate-700 text-white hover:bg-slate-600'}`}
+                aria-label={lightboxItem.isFavorite ? 'Unfavorite' : 'Favorite'}
+              >
+                {favoritingId === lightboxItem.id ? (
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                ) : (
+                  <svg className="h-5 w-5" fill={lightboxItem.isFavorite ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
+                )}
+                {lightboxItem.isFavorite ? 'Favorited' : 'Favorite'}
+              </button>
               <button
                 type="button"
                 onClick={() => handleDownload(lightboxItem)}

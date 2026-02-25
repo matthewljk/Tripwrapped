@@ -1,13 +1,7 @@
 'use client';
 
 import 'mapbox-gl/dist/mapbox-gl.css';
-import {
-  useCallback,
-  useEffect,
-  useImperativeHandle,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Map from 'react-map-gl/mapbox';
 import type mapboxgl from 'mapbox-gl';
 import { getUrl } from 'aws-amplify/storage';
@@ -17,8 +11,9 @@ import type { Schema } from '../../amplify/data/resource';
 const dataClient = generateClient<Schema>();
 const MAP_STYLE = 'mapbox://styles/mapbox/standard';
 const URL_EXPIRES_IN = 3600;
-const PATH_COLOR = '#FFB300';
 const DEFAULT_CENTER: [number, number] = [0, 20];
+/** Small random offset (≈5–15 m) so clusters show as varied “memory” spread */
+const HEATMAP_JITTER_DEG = 0.00008;
 
 export type TripMediaRecord = {
   id: string;
@@ -39,29 +34,21 @@ function getLightPresetForLocalTime(): LightPreset {
   return 'night';
 }
 
-function getLightPresetForTimestamp(isoTimestamp: string | null): LightPreset {
-  if (!isoTimestamp) return getLightPresetForLocalTime();
-  const hour = new Date(isoTimestamp).getHours();
-  if (hour >= 5 && hour < 8) return 'dawn';
-  if (hour >= 8 && hour < 17) return 'day';
-  if (hour >= 17 && hour < 20) return 'dusk';
-  return 'night';
+/** Jitter for heatmap: deterministic per id so stable across renders */
+function jitter(seed: string, range: number): number {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h << 5) - h + seed.charCodeAt(i);
+  return ((h % 1000) / 1000) * 2 * range - range;
 }
-
-export type TripMapRef = {
-  startTour: () => Promise<void>;
-};
 
 type TripMapProps = {
   activeTripId: string;
   mapboxAccessToken: string;
-  mapRef?: React.Ref<TripMapRef | null>;
 };
 
 export default function TripMap({
   activeTripId,
   mapboxAccessToken,
-  mapRef,
 }: TripMapProps) {
   const mapInstanceRef = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
@@ -69,7 +56,6 @@ export default function TripMap({
     []
   );
   const [mapReady, setMapReady] = useState(false);
-  const [tourRunning, setTourRunning] = useState(false);
 
   // Load media with lat/lng (filter out nulls)
   useEffect(() => {
@@ -104,56 +90,6 @@ export default function TripMap({
     const tB = b.timestamp ?? '';
     return tA.localeCompare(tB);
   });
-
-  const startTour = useCallback(async () => {
-    const map = mapInstanceRef.current;
-    if (!map || sortedByTime.length === 0) return;
-    setTourRunning(true);
-    try {
-      for (let i = 0; i < sortedByTime.length; i++) {
-        const photo = sortedByTime[i];
-        const preset = getLightPresetForTimestamp(photo.timestamp);
-        try {
-          map.setConfigProperty('basemap', 'lightPreset', preset);
-        } catch {
-          // ignore if Standard style not active
-        }
-        await new Promise<void>((resolve) => {
-          map.flyTo({
-            center: [photo.lng, photo.lat],
-            zoom: 15,
-            pitch: 60,
-            bearing: 20,
-            duration: 3000,
-            essential: true,
-          });
-          map.once('moveend', () => resolve());
-          setTimeout(() => resolve(), 3200);
-        });
-        // Pop effect: scale marker 1 → 1.5 over 500ms on arrival
-        const markerEl = document.querySelector(
-          `.trip-map-marker[data-marker-id="${photo.id}"]`
-        ) as HTMLElement | null;
-        if (markerEl) {
-          markerEl.style.transition = 'transform 500ms ease-out';
-          markerEl.style.transform = 'scale(1.5)';
-          setTimeout(() => {
-            markerEl.style.transform = 'scale(1)';
-          }, 500);
-        }
-      }
-    } finally {
-      setTourRunning(false);
-    }
-  }, [sortedByTime]);
-
-  useImperativeHandle(
-    mapRef,
-    () => ({
-      startTour,
-    }),
-    [startTour]
-  );
 
   const handleMapLoad = useCallback(
     async (evt: { target: mapboxgl.Map }) => {
@@ -212,79 +148,113 @@ export default function TripMap({
     []
   );
 
-  // Path layer + markers (when map ready and media loaded)
+  // Heatmap + path + markers (when map ready and media loaded)
   useEffect(() => {
     if (!mapReady || !mapInstanceRef.current) return;
 
     const map = mapInstanceRef.current;
+    const heatmapSourceId = 'trip-memory-heatmap-source';
+    const heatmapLayerId = 'trip-memory-heatmap';
 
-    // Travel path: GeoJSON LineString from sorted-by-timestamp points
-    const pathId = 'trip-travel-path';
-    const pathSourceId = 'trip-travel-path-source';
-
-    if (sortedByTime.length >= 2) {
-      const coordinates = sortedByTime.map((p) => [p.lng, p.lat] as [number, number]);
-      const geojson: GeoJSON.Feature<GeoJSON.LineString> = {
-        type: 'Feature',
-        properties: {},
-        geometry: {
-          type: 'LineString',
-          coordinates,
-        },
+    // Memory heatmap: points with slight jitter for visual variety
+    if (mediaWithLocation.length > 0) {
+      const features: GeoJSON.Feature<GeoJSON.Point>[] = mediaWithLocation.map(
+        (p) => ({
+          type: 'Feature',
+          properties: {},
+          geometry: {
+            type: 'Point',
+            coordinates: [
+              p.lng + jitter(p.id + 'lng', HEATMAP_JITTER_DEG),
+              p.lat + jitter(p.id + 'lat', HEATMAP_JITTER_DEG),
+            ],
+          },
+        })
+      );
+      const heatmapGeojson: GeoJSON.FeatureCollection<GeoJSON.Point> = {
+        type: 'FeatureCollection',
+        features,
       };
-
       try {
-        if (map.getSource(pathSourceId)) {
-          (map.getSource(pathSourceId) as mapboxgl.GeoJSONSource).setData(
-            geojson
+        if (map.getSource(heatmapSourceId)) {
+          (map.getSource(heatmapSourceId) as mapboxgl.GeoJSONSource).setData(
+            heatmapGeojson
           );
         } else {
-          map.addSource(pathSourceId, {
+          map.addSource(heatmapSourceId, {
             type: 'geojson',
-            data: geojson,
+            data: heatmapGeojson,
           });
         }
-        if (!map.getLayer(pathId)) {
+        if (!map.getLayer(heatmapLayerId)) {
           map.addLayer({
-            id: pathId,
-            type: 'line',
-            source: pathSourceId,
-            layout: { 'line-join': 'round', 'line-cap': 'round' },
+            id: heatmapLayerId,
+            type: 'heatmap',
+            source: heatmapSourceId,
+            maxzoom: 16,
             paint: {
-              'line-color': PATH_COLOR,
-              'line-width': 4,
-              'line-blur': 2,
+              'heatmap-weight': 1,
+              'heatmap-intensity': [
+                'interpolate',
+                ['linear'],
+                ['zoom'],
+                0, 0.4,
+                10, 0.8,
+                14, 1.2,
+                16, 0.6,
+              ],
+              'heatmap-radius': [
+                'interpolate',
+                ['linear'],
+                ['zoom'],
+                0, 8,
+                10, 18,
+                14, 24,
+                16, 30,
+              ],
+              'heatmap-opacity': 0.65,
+              'heatmap-color': [
+                'interpolate',
+                ['linear'],
+                ['heatmap-density'],
+                0, 'rgba(255, 179, 0, 0)',
+                0.2, 'rgba(255, 179, 0, 0.25)',
+                0.5, 'rgba(255, 179, 0, 0.5)',
+                0.8, 'rgba(255, 204, 102, 0.75)',
+                1, 'rgba(255, 179, 0, 0.9)',
+              ],
             },
           });
         }
-      } catch (e) {
-        // style might not be loaded yet
-      }
-
-      if (sortedByTime.length >= 2) {
-        const lngs = sortedByTime.map((p) => p.lng);
-        const lats = sortedByTime.map((p) => p.lat);
-        map.fitBounds(
-          [
-            [Math.min(...lngs), Math.min(...lats)],
-            [Math.max(...lngs), Math.max(...lats)],
-          ],
-          { padding: 60, maxZoom: 14, duration: 800 }
-        );
-      } else if (sortedByTime.length === 1) {
-        map.flyTo({
-          center: [sortedByTime[0].lng, sortedByTime[0].lat],
-          zoom: 12,
-          duration: 600,
-        });
+      } catch {
+        // style may not be ready
       }
     } else {
       try {
-        if (map.getLayer(pathId)) map.removeLayer(pathId);
-        if (map.getSource(pathSourceId)) map.removeSource(pathSourceId);
+        if (map.getLayer(heatmapLayerId)) map.removeLayer(heatmapLayerId);
+        if (map.getSource(heatmapSourceId)) map.removeSource(heatmapSourceId);
       } catch {
         // ignore
       }
+    }
+
+    // Fit map to photo locations
+    if (sortedByTime.length >= 2) {
+      const lngs = sortedByTime.map((p) => p.lng);
+      const lats = sortedByTime.map((p) => p.lat);
+      map.fitBounds(
+        [
+          [Math.min(...lngs), Math.min(...lats)],
+          [Math.max(...lngs), Math.max(...lats)],
+        ],
+        { padding: 60, maxZoom: 14, duration: 800 }
+      );
+    } else if (sortedByTime.length === 1) {
+      map.flyTo({
+        center: [sortedByTime[0].lng, sortedByTime[0].lat],
+        zoom: 12,
+        duration: 600,
+      });
     }
 
     // Markers: custom HTML with S3 image
@@ -410,16 +380,6 @@ export default function TripMap({
         mapStyle={MAP_STYLE}
         onLoad={handleMapLoad}
       />
-      {sortedByTime.length > 0 && (
-        <button
-          type="button"
-          onClick={startTour}
-          disabled={tourRunning}
-          className="absolute bottom-4 left-1/2 z-10 -translate-x-1/2 rounded-xl bg-amber-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg hover:bg-amber-600 disabled:opacity-60"
-        >
-          {tourRunning ? 'Tour…' : 'Start tour'}
-        </button>
-      )}
       {mediaWithLocation.length === 0 && mapReady && (
         <div className="absolute inset-0 flex items-center justify-center bg-slate-900/50">
           <p className="rounded-xl bg-slate-800/90 px-4 py-3 text-sm text-slate-200">

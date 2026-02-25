@@ -12,6 +12,7 @@ const schema = a.schema({
       tripCode: a.string().required(),
       name: a.string(),
       allowAnyMemberToDelete: a.boolean(),
+      startDate: a.string(),
     })
     .secondaryIndexes((index) => [index('tripCode')])
     .authorization((allow) => [
@@ -40,10 +41,16 @@ const schema = a.schema({
       lat: a.float(),
       lng: a.float(),
       timestamp: a.string(),
+      isFavorite: a.boolean(),
+      locationName: a.string(),
+      googlePlaceId: a.string(),
+      rating: a.integer(),
+      review: a.string(),
+      visited: a.boolean(),
     })
     .secondaryIndexes((index) => [index('tripId')])
     .authorization((allow) => [
-      allow.authenticated().to(['read', 'create']),
+      allow.authenticated().to(['read', 'create', 'update']),
       allow.ownerDefinedIn('uploadedBy').to(['update', 'delete']),
     ]),
 
@@ -63,6 +70,19 @@ const schema = a.schema({
       activeTripId: a.id(),
     })
     .authorization((allow) => [allow.owner()]),
+
+  SavedLocation: a
+    .model({
+      userId: a.string().required(),
+      lat: a.float().required(),
+      lng: a.float().required(),
+      name: a.string().required(),
+    })
+    .secondaryIndexes((index) => [index('userId')])
+    .authorization((allow) => [
+      allow.authenticated().to(['create']),
+      allow.ownerDefinedIn('userId').to(['read', 'update', 'delete']),
+    ]),
 
   DeleteTripMediaResult: a.customType({
     success: a.boolean(),

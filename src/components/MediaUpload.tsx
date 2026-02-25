@@ -7,10 +7,11 @@ import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../amplify/data/resource';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import exifr from 'exifr';
+import heic2any from 'heic2any';
 
 const dataClient = generateClient<Schema>();
 const MAX_VIDEO_DURATION_SEC = 15;
-const ACCEPTED_TYPES = 'image/*,video/*';
+const ACCEPTED_TYPES = 'image/*,image/heic,image/heic-sequence,video/*';
 const THUMBNAIL_URL_EXPIRES_IN = 3600;
 
 type ExtractedMetadata = {
@@ -47,6 +48,25 @@ function getVideoDuration(file: File): Promise<number> {
     });
     video.src = url;
   });
+}
+
+function isHeic(file: File): boolean {
+  const t = file.type?.toLowerCase();
+  const name = file.name?.toLowerCase() ?? '';
+  return t === 'image/heic' || t === 'image/heic-sequence' || name.endsWith('.heic') || name.endsWith('.heif');
+}
+
+/** Convert HEIC/HEIF to JPEG in the browser so it displays everywhere. Metadata must be extracted from the original file before calling. */
+async function convertHeicToJpeg(file: File): Promise<File> {
+  const result = await heic2any({
+    blob: file,
+    toType: 'image/jpeg',
+    quality: 0.92,
+  });
+  const blob = Array.isArray(result) ? result[0] : result;
+  if (!blob || !(blob instanceof Blob)) throw new Error('HEIC conversion failed');
+  const baseName = file.name.replace(/\.(heic|heif)$/i, '') || 'image';
+  return new File([blob], `${baseName}.jpg`, { type: 'image/jpeg' });
 }
 
 async function extractMediaMetadata(file: File): Promise<ExtractedMetadata> {
@@ -162,7 +182,16 @@ export default function MediaUpload({ activeTripId, onSuccess }: MediaUploadProp
           }
         }
         const metadata: ExtractedMetadata = await extractMediaMetadata(file);
-        valid.push({ file, metadata });
+        let fileToUpload: File = file;
+        if (isHeic(file)) {
+          try {
+            fileToUpload = await convertHeicToJpeg(file);
+          } catch {
+            errors.push(`${file.name}: could not convert HEIC to JPEG`);
+            continue;
+          }
+        }
+        valid.push({ file: fileToUpload, metadata });
       }
 
       if (valid.length === 0) {

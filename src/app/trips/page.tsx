@@ -13,6 +13,7 @@ export default function TripsPage() {
   const { trips, activeTripId, activeTrip, setActiveTripId, loading, hasTrip, refresh } = useActiveTrip();
   const [createCode, setCreateCode] = useState('');
   const [createName, setCreateName] = useState('');
+  const [createStartDate, setCreateStartDate] = useState('');
   const [createAllowAnyDelete, setCreateAllowAnyDelete] = useState(false);
   const [joinCode, setJoinCode] = useState('');
   const [createError, setCreateError] = useState<string | null>(null);
@@ -43,6 +44,7 @@ export default function TripsPage() {
         tripCode: code,
         name: createName.trim() || null,
         allowAnyMemberToDelete: createAllowAnyDelete,
+        startDate: createStartDate.trim() || null,
       });
       if (!trip) throw new Error('Create failed');
       const { userId } = await getCurrentUser();
@@ -50,6 +52,7 @@ export default function TripsPage() {
       await setActiveTripId(trip.id);
       setCreateCode('');
       setCreateName('');
+      setCreateStartDate('');
       setCreateSuccess(true);
       refresh();
     } catch (err) {
@@ -127,7 +130,31 @@ export default function TripsPage() {
           {activeTrip && activeTrip.role === 'owner' && (
             <div className="mt-6 border-t border-slate-200 pt-6">
               <p className="text-sm font-semibold text-slate-700">Trip settings</p>
-              <label className="mt-3 flex cursor-pointer items-center gap-3">
+              <div className="mt-3">
+                <label htmlFor="trip-start-date" className="block text-sm font-medium text-slate-700">Trip start date</label>
+                <p className="mt-0.5 text-xs text-slate-500">Used for Daily Journal &quot;Day X&quot;. Optional.</p>
+                <input
+                  id="trip-start-date"
+                  type="date"
+                  value={activeTrip.startDate ?? ''}
+                  disabled={settingsBusy}
+                  onChange={async (e) => {
+                    const next = e.target.value.trim() || null;
+                    setSettingsBusy(true);
+                    try {
+                      await client.models.Trip.update({
+                        id: activeTrip.id,
+                        startDate: next,
+                      });
+                      refresh();
+                    } finally {
+                      setSettingsBusy(false);
+                    }
+                  }}
+                  className="mt-2 block w-full max-w-xs rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
+                />
+              </div>
+              <label className="mt-4 flex cursor-pointer items-center gap-3">
                 <input
                   type="checkbox"
                   checked={activeTrip.allowAnyMemberToDelete}
@@ -178,6 +205,10 @@ export default function TripsPage() {
           <div>
             <label htmlFor="create-name" className="block text-sm font-semibold text-slate-700">Name <span className="font-normal text-slate-400">(optional)</span></label>
             <input id="create-name" type="text" value={createName} onChange={(e) => setCreateName(e.target.value)} placeholder="e.g. Bali holiday" className="mt-2 block w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2" disabled={createBusy} />
+          </div>
+          <div>
+            <label htmlFor="create-start-date" className="block text-sm font-semibold text-slate-700">Start date <span className="font-normal text-slate-400">(optional)</span></label>
+            <input id="create-start-date" type="date" value={createStartDate} onChange={(e) => setCreateStartDate(e.target.value)} className="mt-2 block w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2" disabled={createBusy} />
           </div>
           <div>
             <label className="flex cursor-pointer items-center gap-3">

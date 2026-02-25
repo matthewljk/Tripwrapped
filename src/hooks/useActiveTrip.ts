@@ -13,6 +13,7 @@ export type TripWithRole = {
   name: string | null;
   role: string;
   allowAnyMemberToDelete: boolean;
+  startDate: string | null;
 };
 
 export function useActiveTrip() {
@@ -57,6 +58,7 @@ export function useActiveTrip() {
                 name: trip.name ?? null,
                 role: m.role,
                 allowAnyMemberToDelete: trip.allowAnyMemberToDelete === true,
+                startDate: trip.startDate ?? null,
               }
             : null;
         })

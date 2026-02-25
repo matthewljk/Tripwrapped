@@ -1,6 +1,6 @@
 # TripWrapped
 
-Shared trip photo/video galleries. Sign in (Google or email), create or join trips by code, upload media, view gallery and a trip map. Next.js 16 (App Router) + AWS Amplify Gen 2.
+Shared trip photo/video galleries. Sign in (Google or email), create or join trips by code, upload media, view gallery, daily journal (photo trail + per-location ratings/reviews), and a trip map. Next.js 16 (App Router) + AWS Amplify Gen 2.
 
 ---
 
@@ -10,7 +10,9 @@ Shared trip photo/video galleries. Sign in (Google or email), create or join tri
 2. **Copy config:** `cp .amplify/artifacts/amplify_outputs.json ./`
 3. **Run app:** `npm run dev` → [http://localhost:3000](http://localhost:3000)
 
-**Deploy:** Push to `main` to trigger AWS Amplify Hosting build. Ensure `amplify_outputs.json` is at root (committed or injected via `NEXT_PUBLIC_AMPLIFY_OUTPUTS`) and that `package-lock.json` is committed when deps change.
+**Deploy:** Push to `main` to trigger AWS Amplify Hosting build. Backend is deployed via `ampx pipeline-deploy` in `amplify.yml`. Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in Amplify Console → Hosting → **Secrets** (not just env vars). Ensure `package-lock.json` is committed when deps change.
+
+**Ratings, reviews, or location names not persisting after refresh?** The journal saves them to the `Media` model (rating, review, locationName). If they disappear on reload, the backend API may not have the latest schema. Re-run the sandbox so AppSync/DynamoDB pick up schema changes: stop sandbox, then `npm run sandbox` again (and re-copy `amplify_outputs.json` if the API URL changed).
 
 ---
 
@@ -39,6 +41,7 @@ src/
     layout.tsx          # Root layout, font, ClientLayout
     page.tsx            # / — upload
     gallery/page.tsx    # /gallery
+    journal/page.tsx    # Daily Journal (POIs, highlight, ratings)
     wrap-it-up/page.tsx # Trip map (Mapbox)
     trips/page.tsx      # /trips
     profile/page.tsx    # /profile
@@ -51,7 +54,8 @@ src/
     MediaGallery.tsx    # Grid + metadata view, sort, load more, list cache, download/delete
     UploadModal.tsx
     TripSelector.tsx
-    TripMap.tsx         # Mapbox Standard, 3D terrain, photo markers, travel path, Start tour
+    TripMap.tsx         # Mapbox Standard, 3D terrain, memory heatmap, photo markers
+    DailyCard.tsx       # Journal day card (highlight, Photo Trail, per-location expand, rating/review, summary)
     SetUsernamePrompt.tsx
     LoginVideoBackground.tsx
     LoadingSpinner.tsx
@@ -59,10 +63,15 @@ src/
     useActiveTrip.ts
     useUserProfile.ts
     useIsMobile.ts
+  lib/
+    poiClustering.ts   # POI clustering (100 m for journal), highlight score, date grouping
+    googlePlaces.ts    # Resolve POI name via /api/places/nearby (Google Places searchNearby), SavedLocation fallback
+  app/api/places/nearby/
+    route.ts           # POST: proxy to Google Places API (New) searchNearby; type-priority pick; GOOGLE_MAPS_API_KEY
 amplify/
   backend.ts            # DynamoDB on-demand billing (pay-per-request, hobby-friendly)
   auth/resource.ts
-  data/resource.ts      # Schema (Trip, TripMember, Media, UserPreference, UserProfile), deleteTripMedia
+  data/resource.ts      # Schema (Trip startDate; Media locationName, googlePlaceId, rating, review), deleteTripMedia
   data/delete-media-handler/handler.ts
   storage/resource.ts
 ```
@@ -96,7 +105,7 @@ amplify/
 
 **Deployed app can't see metadata but local can:** Production talks to the production backend. Deploy that backend with the current schema, set hosting's `NEXT_PUBLIC_AMPLIFY_OUTPUTS` to its outputs, and redeploy the frontend. New uploads will then have metadata; existing production records may need re-upload.
 
-**Production from Console only:** The repo has `amplify.yml` so each build deploys the backend then the frontend. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in Amplify Console for the branch; then trigger a build (push to main or Redeploy). No local terminal needed.
+**Production deploy:** The repo has `amplify.yml` so each build deploys the backend then the frontend. In Amplify Console → Hosting → **Secrets**, set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` for the branch. Trigger a build (push to `main` or Redeploy). **Google sign-in:** In Google Cloud Console → Credentials → your OAuth client, add this exact Authorized redirect URI: `https://<cognito-domain>.auth.ap-southeast-1.amazoncognito.com/oauth2/idpresponse` (get `<cognito-domain>` from Amplify backend outputs or Hosting env, e.g. `065e0ecce9ee9ba17e6a`).
 
 **Metadata not saved on upload in production:** The app sends lat/lng/timestamp when creating each Media record. If the production backend was deployed before the `Media` model had these fields, they won't be stored. Fix: deploy the production backend with the current schema (see "How to sync both backends" above). After that, new uploads will persist metadata. No frontend change required.
 
@@ -106,13 +115,16 @@ amplify/
 
 | Path           | Role |
 |----------------|------|
-| `/`            | Upload: trip selector, multi-file upload, recent list, delete. |
-| `/gallery`     | Masonry grid (load more), metadata table view, sort (date/type/user), lightbox, download/delete in both views. |
-| `/wrap-it-up`  | Map (Mapbox Standard, 3D terrain): photo markers, travel path, Start tour with time-based lighting. |
-| `/trips`       | Create or join by code, set active trip, trip settings (e.g. who can delete). |
+| `/`            | Upload: trip selector, multi-file upload (images + video). HEIC/HEIF converted to JPEG in-browser (heic2any). Recent list, delete. |
+| `/gallery`     | Masonry grid (load more), metadata table with sticky preview column, sort (date/type/user/favorites), lightbox, download/delete, favorite. HEIC not loaded (placeholder); URLs loaded in batches. |
+| `/journal`    | Daily Journal: media by date and POI (~100 m). **Photo Trail** (time – icon – location); tap a location to expand only that one (rating, review, “Is this location accurate?” → “Where was this photo taken?”). Google Places for POI names (type-priority when multiple nearby); names cached on Media. Summary: average stars, locations visited, contributor avatars. Highlight image loads when in view; fallback to another photo if load fails. |
+| `/wrap-it-up`  | Map (Mapbox Standard, 3D terrain): memory heatmap, photo markers. |
+| `/trips`       | Create or join by code, set active trip, trip start date, trip settings (e.g. who can delete). |
 | `/profile`     | Username, manage/leave trips. |
 
 **Wrap It Up:** Requires `NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN` in `.env.local` (or in Amplify Hosting env). Get a token at [mapbox.com](https://account.mapbox.com/access-tokens/).
+
+**Daily Journal (POI names):** Uses Google Places API (New) via server route `/api/places/nearby`. Set `GOOGLE_MAPS_API_KEY` in `.env.local` (server-side only; never use `NEXT_PUBLIC_` so the key is not exposed to the client). In Google Cloud Console enable "Places API (New)", create an API key, and restrict it by HTTP referrer or IP. See `.env.example`.
 
 ---
 
