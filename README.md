@@ -124,7 +124,7 @@ amplify/
 
 **Wrap It Up:** Requires `NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN` in `.env.local` (or in Amplify Hosting env). Get a token at [mapbox.com](https://account.mapbox.com/access-tokens/).
 
-**Daily Journal (POI names):** Uses Google Places API (New) via server route `/api/places/nearby`. Set `GOOGLE_MAPS_API_KEY` in `.env.local` (server-side only; never use `NEXT_PUBLIC_` so the key is not exposed to the client). In Google Cloud Console enable "Places API (New)", create an API key, and restrict it by HTTP referrer or IP. See `.env.example`.
+**Daily Journal (POI names):** Uses Google Places API (New) via server route `/api/places/nearby`. Set `GOOGLE_MAPS_API_KEY` in `.env.local` for local dev (server-side only; never use `NEXT_PUBLIC_`). For production, add `GOOGLE_MAPS_API_KEY` in Amplify Console → App → Environment variables and redeploy; otherwise `/api/places/nearby` returns 503. In Google Cloud Console enable "Places API (New)", create an API key, and restrict it by HTTP referrer or IP. See `.env.example`.
 
 ---
 

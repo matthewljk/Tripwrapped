@@ -193,7 +193,8 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error: 'Google Maps API key not configured',
-        hint: 'Add GOOGLE_MAPS_API_KEY to .env.local (see .env.example), then restart the dev server (npm run dev).',
+        hint:
+          'Local: add GOOGLE_MAPS_API_KEY to .env.local. Production: add it in Amplify Console → App → Environment variables, then redeploy.',
       },
       { status: 503 }
     );
