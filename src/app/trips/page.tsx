@@ -35,6 +35,7 @@ export default function TripsPage() {
   const [joinSuccess, setJoinSuccess] = useState(false);
   const [settingsBusy, setSettingsBusy] = useState(false);
   const [settingsSaved, setSettingsSaved] = useState(false);
+  const [settingsSaveError, setSettingsSaveError] = useState<string | null>(null);
   const [settingsBaseCurrency, setSettingsBaseCurrency] = useState('');
   const [settingsStartDate, setSettingsStartDate] = useState('');
   const [settingsEndDate, setSettingsEndDate] = useState('');
@@ -336,27 +337,33 @@ export default function TripsPage() {
                     if (!activeTrip) return;
                     setSettingsBusy(true);
                     setSettingsSaved(false);
+                    setSettingsSaveError(null);
+                    const savedCurrency = settingsBaseCurrency.trim();
+                    // Persist to sessionStorage immediately so Add transaction shows this currency after refresh even if production API update fails or is slow
+                    if (savedCurrency && typeof sessionStorage !== 'undefined') {
+                      sessionStorage.setItem(`tripwrapped-trip-currency-${activeTrip.id}`, savedCurrency);
+                    }
                     try {
                       const budgetVal = settingsBudgetPerPax.trim() ? parseFloat(settingsBudgetPerPax) : null;
                       await client.models.Trip.update({
                         id: activeTrip.id,
-                        baseCurrency: settingsBaseCurrency.trim() || null,
+                        baseCurrency: savedCurrency || null,
                         startDate: settingsStartDate.trim() || null,
                         endDate: settingsEndDate.trim() || null,
                         budgetPerPax: budgetVal != null && !Number.isNaN(budgetVal) && budgetVal >= 0 ? budgetVal : null,
                         allowAnyMemberToDelete: settingsAllowAnyDelete,
                       });
                       setSettingsSaved(true);
-                      setSettingsBaseCurrency(settingsBaseCurrency.trim());
+                      setSettingsBaseCurrency(savedCurrency);
                       setSettingsStartDate(settingsStartDate.trim());
                       setSettingsEndDate(settingsEndDate.trim());
                       setSettingsBudgetPerPax(budgetVal != null && !Number.isNaN(budgetVal) && budgetVal >= 0 ? String(budgetVal) : '');
-                      const savedCurrency = settingsBaseCurrency.trim();
-                      if (savedCurrency && typeof sessionStorage !== 'undefined') {
-                        sessionStorage.setItem(`tripwrapped-trip-currency-${activeTrip.id}`, savedCurrency);
-                      }
                       refresh();
                       setTimeout(() => setSettingsSaved(false), 2000);
+                    } catch (err) {
+                      console.error('Trip settings update failed', err);
+                      setSettingsSaveError(err instanceof Error ? err.message : 'Could not save to server. Check connection and try again.');
+                      setTimeout(() => setSettingsSaveError(null), 5000);
                     } finally {
                       setSettingsBusy(false);
                     }
@@ -366,6 +373,7 @@ export default function TripsPage() {
                   {settingsBusy ? 'Saving…' : 'Save settings'}
                 </button>
                 {settingsSaved && <span className="text-sm text-green-600">Saved</span>}
+                {settingsSaveError && <p className="text-sm text-red-600">{settingsSaveError}</p>}
               </div>
                 </>
               )}
@@ -509,16 +517,11 @@ export default function TripsPage() {
           <button
             type="button"
             onClick={() => signOut()}
-            className="text-sm font-medium text-slate-600 hover:text-slate-900"
+            className="w-full rounded-xl border-2 border-red-500 bg-red-500 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-red-600 hover:border-red-600"
           >
             Sign out
           </button>
         </div>
-      </section>
-
-      <section className="card mt-6 p-4 sm:mt-8 sm:p-6">
-        <h2 className="text-lg font-semibold text-slate-900">Password</h2>
-        <p className="mt-1 text-sm text-slate-600">Use &quot;Forgot password&quot; on the sign-in screen or your identity provider (e.g. Google account settings) to change your password.</p>
       </section>
     </div>
   );

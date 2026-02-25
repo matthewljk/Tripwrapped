@@ -37,12 +37,12 @@ export default function AddPage() {
 
   if (!activeTripId) return <LoadingSpinner />;
 
-  // Use trip currency from API, or fallback to what we saved in Trip settings (sessionStorage) so Add transaction shows it before API sync
+  // Prefer sessionStorage (saved in Trip settings in this browser) so production shows correct currency after refresh even when API is slow or stale
   const storedCurrency =
     typeof window !== 'undefined' && activeTripId
       ? sessionStorage.getItem(`tripwrapped-trip-currency-${activeTripId}`)
       : null;
-  const baseCurrencyForForm = activeTrip?.baseCurrency ?? storedCurrency ?? null;
+  const baseCurrencyForForm = storedCurrency ?? activeTrip?.baseCurrency ?? null;
 
   return (
     <>
