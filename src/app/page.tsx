@@ -22,6 +22,11 @@ export default function AddPage() {
     if (hasTrip) refresh();
   }, [hasTrip, refresh]);
 
+  // When user expands Add transaction, refetch so form gets latest trip currency
+  useEffect(() => {
+    if (addTransactionExpanded && hasTrip) refresh();
+  }, [addTransactionExpanded, hasTrip, refresh]);
+
   useEffect(() => {
     if (!loading && !hasTrip) router.replace('/trips');
   }, [loading, hasTrip, router]);
@@ -31,6 +36,13 @@ export default function AddPage() {
   if (!hasTrip) return <LoadingSpinner />;
 
   if (!activeTripId) return <LoadingSpinner />;
+
+  // Use trip currency from API, or fallback to what we saved in Trip settings (sessionStorage) so Add transaction shows it before API sync
+  const storedCurrency =
+    typeof window !== 'undefined' && activeTripId
+      ? sessionStorage.getItem(`tripwrapped-trip-currency-${activeTripId}`)
+      : null;
+  const baseCurrencyForForm = activeTrip?.baseCurrency ?? storedCurrency ?? null;
 
   return (
     <>
@@ -77,7 +89,7 @@ export default function AddPage() {
             <div className="mt-4 sm:mt-6 w-full max-w-xl pl-6 sm:pl-8">
               <TransactionForm
                 activeTripId={activeTripId}
-                baseCurrency={activeTrip?.baseCurrency ?? null}
+                baseCurrency={baseCurrencyForForm}
                 onSuccess={handleTransactionSuccess}
               />
             </div>

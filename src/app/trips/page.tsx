@@ -69,23 +69,29 @@ export default function TripsPage() {
     }
   }, [activeTrip, activeTripId]);
 
-  // Keep trip settings form in sync with saved trip data (so when user expands they see saved values)
+  // Keep trip settings form in sync with saved trip data; don't overwrite with empty (so saved KRW stays when trip data is stale)
   useEffect(() => {
     if (!activeTrip) return;
-    setSettingsBaseCurrency(activeTrip.baseCurrency ?? '');
-    setSettingsStartDate(activeTrip.startDate ?? '');
-    setSettingsEndDate(activeTrip.endDate ?? '');
-    setSettingsBudgetPerPax(activeTrip.budgetPerPax != null ? String(activeTrip.budgetPerPax) : '');
+    setSettingsBaseCurrency((prev) => (activeTrip.baseCurrency?.trim() ? activeTrip.baseCurrency!.trim() : prev));
+    setSettingsStartDate((prev) => (activeTrip.startDate?.trim() ? activeTrip.startDate.trim() : prev));
+    setSettingsEndDate((prev) => (activeTrip.endDate?.trim() ? activeTrip.endDate.trim() : prev));
+    setSettingsBudgetPerPax((prev) => (activeTrip.budgetPerPax != null && !Number.isNaN(activeTrip.budgetPerPax) ? String(activeTrip.budgetPerPax) : prev));
     setSettingsAllowAnyDelete(activeTrip.allowAnyMemberToDelete === true);
   }, [activeTrip?.id, activeTrip?.baseCurrency, activeTrip?.startDate, activeTrip?.endDate, activeTrip?.budgetPerPax, activeTrip?.allowAnyMemberToDelete]);
 
-  // When user expands Trip settings, re-sync from trip so fields always show current saved values
+  // When user first expands Trip settings, sync from trip but don't overwrite with empty (trip may not have refreshed yet after save)
+  const prevExpandedRef = useRef(false);
   useEffect(() => {
-    if (settingsSectionExpanded && activeTrip) {
-      setSettingsBaseCurrency(activeTrip.baseCurrency ?? '');
-      setSettingsStartDate(activeTrip.startDate ?? '');
-      setSettingsEndDate(activeTrip.endDate ?? '');
-      setSettingsBudgetPerPax(activeTrip.budgetPerPax != null ? String(activeTrip.budgetPerPax) : '');
+    const justExpanded = settingsSectionExpanded && !prevExpandedRef.current;
+    prevExpandedRef.current = settingsSectionExpanded;
+    if (justExpanded && activeTrip) {
+      const tc = (activeTrip.baseCurrency ?? '').trim();
+      if (tc) setSettingsBaseCurrency(activeTrip.baseCurrency ?? '');
+      const ts = (activeTrip.startDate ?? '').trim();
+      if (ts) setSettingsStartDate(activeTrip.startDate ?? '');
+      const te = (activeTrip.endDate ?? '').trim();
+      if (te) setSettingsEndDate(activeTrip.endDate ?? '');
+      if (activeTrip.budgetPerPax != null && activeTrip.budgetPerPax > 0) setSettingsBudgetPerPax(String(activeTrip.budgetPerPax));
       setSettingsAllowAnyDelete(activeTrip.allowAnyMemberToDelete === true);
     }
   }, [settingsSectionExpanded, activeTrip]);
@@ -341,6 +347,14 @@ export default function TripsPage() {
                         allowAnyMemberToDelete: settingsAllowAnyDelete,
                       });
                       setSettingsSaved(true);
+                      setSettingsBaseCurrency(settingsBaseCurrency.trim());
+                      setSettingsStartDate(settingsStartDate.trim());
+                      setSettingsEndDate(settingsEndDate.trim());
+                      setSettingsBudgetPerPax(budgetVal != null && !Number.isNaN(budgetVal) && budgetVal >= 0 ? String(budgetVal) : '');
+                      const savedCurrency = settingsBaseCurrency.trim();
+                      if (savedCurrency && typeof sessionStorage !== 'undefined') {
+                        sessionStorage.setItem(`tripwrapped-trip-currency-${activeTrip.id}`, savedCurrency);
+                      }
                       refresh();
                       setTimeout(() => setSettingsSaved(false), 2000);
                     } finally {

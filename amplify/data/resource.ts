@@ -27,8 +27,8 @@ const schema = a.schema({
     })
     .secondaryIndexes((index) => [index('tripCode')])
     .authorization((allow) => [
-      allow.authenticated().to(['read', 'create']),
-      allow.owner().to(['update', 'delete']),
+      allow.authenticated().to(['read', 'create', 'update']),
+      allow.owner().to(['delete']),
     ]),
 
   Transaction: a

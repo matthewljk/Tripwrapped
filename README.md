@@ -55,7 +55,7 @@ src/
     MediaGallery.tsx    # Grid + metadata view, sort, load more, list cache, download/delete
     UploadModal.tsx
     TripSelector.tsx
-    TransactionForm.tsx # Add transaction: category, date (or accommodation start/end), split; currency from trip
+    TransactionForm.tsx # Add transaction: category, date (or accommodation start/end), split; currency from trip (API or sessionStorage)
     TripMap.tsx         # Mapbox Standard, 3D terrain, memory heatmap, photo markers
     DailyCard.tsx       # Journal day card (highlight, Photo Trail, per-location expand, rating/review, summary)
     SetUsernamePrompt.tsx
@@ -73,7 +73,7 @@ src/
 amplify/
   backend.ts            # DynamoDB on-demand billing (pay-per-request, hobby-friendly)
   auth/resource.ts
-  data/resource.ts      # Schema (Trip startDate, endDate, budgetPerPax; Media …), deleteTripMedia + cleanupEmptyTrip
+  data/resource.ts      # Schema (Trip startDate, endDate, budgetPerPax; any authenticated can update Trip), deleteTripMedia + cleanupEmptyTrip
   data/delete-media-handler/handler.ts   # deleteTripMedia (name: deleteTripMedia)
   data/cleanup-empty-trip-handler/handler.ts  # cleanupEmptyTrip when last member leaves (name: cleanupEmptyTrip)
   storage/resource.ts
@@ -118,7 +118,7 @@ amplify/
 
 | Path           | Role |
 |----------------|------|
-| `/`            | **Add:** trip selector; photo/video upload; **Add transaction** (expandable, category → date; accommodation = start/end date; currency defaults to trip currency). HEIC → JPEG in-browser. |
+| `/`            | **Add:** trip selector; photo/video upload; **Add transaction** (expandable, category → date; accommodation = start/end date; currency defaults to trip currency from Trip settings, with sessionStorage fallback so it shows even before API sync). HEIC → JPEG in-browser. |
 | `/gallery`     | Masonry grid (load more), sort (date/type/user/favorites), lightbox, select mode for download/delete, favorite. Media loads when ready (no flash). |
 | `/journal`    | Daily Journal: media by date and POI (~100 m). Photo Trail, per-location rating/review, Google Places POI names, highlight image. |
 | `/wrap-it-up`  | Map (Mapbox Standard, 3D terrain): memory heatmap, photo markers. |

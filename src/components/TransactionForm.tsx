@@ -79,7 +79,7 @@ export default function TransactionForm({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Always show the trip's saved currency (so user sees e.g. KRW when that was last saved for the trip)
+  // Always use trip currency when available (so default shows e.g. KRW when trip has it)
   const tripCurrency = baseCurrency ?? '';
   useEffect(() => {
     if (tripCurrency) setCurrency(tripCurrency);
@@ -166,6 +166,7 @@ export default function TransactionForm({
       });
       onSuccess();
       setAmount('');
+      setCurrency(tripCurrency || currency);
       setDescription('');
       setTransactionDate(new Date().toISOString().slice(0, 10));
       setCheckInDate('');
@@ -182,6 +183,7 @@ export default function TransactionForm({
     paidBy,
     activeTripId,
     currency,
+    tripCurrency,
     description,
     categoryId,
     splitMode,
