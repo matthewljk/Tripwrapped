@@ -12,6 +12,7 @@ export default function AddPage() {
   const router = useRouter();
   const { activeTripId, activeTrip, hasTrip, loading, refresh } = useActiveTrip();
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [addTransactionExpanded, setAddTransactionExpanded] = useState(false);
 
   const handleUploadSuccess = useCallback(() => {}, []);
   const handleTransactionSuccess = useCallback(() => {}, []);
@@ -52,17 +53,35 @@ export default function AddPage() {
           </button>
         </section>
 
-        {/* Section 2: Add transaction — form shown directly, no menu */}
+        {/* Section 2: Add transaction — click to expand */}
         <section className="py-6 sm:py-10">
-          <h2 className="text-lg font-bold tracking-tight text-slate-900 sm:text-xl">Add transaction</h2>
-          <p className="mt-1 text-sm sm:text-base text-slate-600">Log an expense and split it with trip members.</p>
-          <div className="mt-4 sm:mt-6 w-full max-w-xl">
-            <TransactionForm
-              activeTripId={activeTripId}
-              baseCurrency={activeTrip?.baseCurrency ?? null}
-              onSuccess={handleTransactionSuccess}
-            />
-          </div>
+          <button
+            type="button"
+            onClick={() => setAddTransactionExpanded((e) => !e)}
+            className="flex w-full items-start gap-3 text-left"
+            aria-expanded={addTransactionExpanded}
+          >
+            <span
+              className="mt-1 flex-shrink-0 text-slate-400 transition-transform"
+              style={{ transform: addTransactionExpanded ? 'rotate(90deg)' : 'rotate(0deg)' }}
+              aria-hidden
+            >
+              ▶
+            </span>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-lg font-bold tracking-tight text-slate-900 sm:text-xl">Add transaction</h2>
+              <p className="mt-1 text-sm sm:text-base text-slate-600">Log an expense and split it with trip members.</p>
+            </div>
+          </button>
+          {addTransactionExpanded && (
+            <div className="mt-4 sm:mt-6 w-full max-w-xl pl-6 sm:pl-8">
+              <TransactionForm
+                activeTripId={activeTripId}
+                baseCurrency={activeTrip?.baseCurrency ?? null}
+                onSuccess={handleTransactionSuccess}
+              />
+            </div>
+          )}
         </section>
       </div>
 

@@ -63,6 +63,7 @@ export default function OpsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loadingTx, setLoadingTx] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [transactionHistoryShowMore, setTransactionHistoryShowMore] = useState(false);
 
   const tripBaseCurrency = (activeTrip?.baseCurrency || '').trim();
   const baseCurrency = tripBaseCurrency || inferBaseCurrency(transactions) || 'USD';
@@ -182,9 +183,20 @@ export default function OpsPage() {
             )}
           </section>
 
-          {/* Budget summary: total expense, % utilised, expense per pax, expand for breakdown */}
+          {/* Budget summary: trip budget, total expense, % utilised, expense per pax, expand for breakdown */}
           <section className="card mt-4 p-4 sm:mt-6 sm:p-6">
             <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Budget</h2>
+            {budgetPerPax != null && budgetPerPax > 0 && (
+              <p className="mt-2 text-slate-900">
+                <span className="font-medium">Trip budget (per person):</span>{' '}
+                {formatAmount(budgetPerPax, baseCurrency)}
+                {participantCount > 1 && (
+                  <span className="ml-1 text-slate-500 text-sm">
+                    (total: {formatAmount(totalBudget ?? 0, baseCurrency)})
+                  </span>
+                )}
+              </p>
+            )}
             {transactions.length === 0 ? (
               <p className="mt-2 text-slate-600">No transactions yet. Add some from the Add page.</p>
             ) : (
@@ -254,38 +266,89 @@ export default function OpsPage() {
             </section>
           )}
 
-          {/* Transaction history by day */}
+          {/* Transaction history: top 3 days visible, rest expandable */}
           <section className="mt-6 sm:mt-8">
             <h2 className="text-base font-bold text-slate-900 sm:text-lg">Transaction history</h2>
             {dateKeys.length === 0 ? (
               <p className="mt-2 text-sm text-slate-600">No transactions yet.</p>
             ) : (
-              <div className="mt-4 space-y-4 sm:space-y-6">
-                {dateKeys.map((dateKey) => (
-                  <div key={dateKey} className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-                    <div className="border-b border-slate-100 bg-slate-50/80 px-3 py-2 text-sm font-medium text-slate-700 sm:px-4">
-                      {formatDateLabel(dateKey)}
+              <>
+                <div className="mt-4 space-y-4 sm:space-y-6">
+                  {dateKeys.slice(0, 3).map((dateKey) => (
+                    <div key={dateKey} className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                      <div className="border-b border-slate-100 bg-slate-50/80 px-3 py-2 text-sm font-medium text-slate-700 sm:px-4">
+                        {formatDateLabel(dateKey)}
+                      </div>
+                      <ul className="divide-y divide-slate-100">
+                        {(byDay.get(dateKey) ?? []).map((tx) => (
+                          <li key={tx.id} className="flex flex-col gap-0.5 px-3 py-2.5 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-4 sm:py-3">
+                            <div className="min-w-0 flex-1">
+                              <p className="font-medium text-slate-900 truncate">
+                                {tx.description?.trim() || 'Expense'}
+                              </p>
+                              <p className="text-xs text-slate-500">
+                                {getCategoryLabel(tx.categoryId)} · {displayName(tx.paidBy)} paid
+                              </p>
+                            </div>
+                            <span className="flex-shrink-0 font-medium text-slate-900">
+                              {formatAmount(tx.amount, tx.currency)}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
                     </div>
-                    <ul className="divide-y divide-slate-100">
-                      {(byDay.get(dateKey) ?? []).map((tx) => (
-                        <li key={tx.id} className="flex flex-col gap-0.5 px-3 py-2.5 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-4 sm:py-3">
-                          <div className="min-w-0 flex-1">
-                            <p className="font-medium text-slate-900 truncate">
-                              {tx.description?.trim() || 'Expense'}
-                            </p>
-                            <p className="text-xs text-slate-500">
-                              {getCategoryLabel(tx.categoryId)} · {displayName(tx.paidBy)} paid
-                            </p>
+                  ))}
+                </div>
+                {dateKeys.length > 3 && (
+                  <>
+                    {transactionHistoryShowMore && (
+                      <div className="mt-4 space-y-4 sm:space-y-6">
+                        {dateKeys.slice(3).map((dateKey) => (
+                          <div key={dateKey} className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                            <div className="border-b border-slate-100 bg-slate-50/80 px-3 py-2 text-sm font-medium text-slate-700 sm:px-4">
+                              {formatDateLabel(dateKey)}
+                            </div>
+                            <ul className="divide-y divide-slate-100">
+                              {(byDay.get(dateKey) ?? []).map((tx) => (
+                                <li key={tx.id} className="flex flex-col gap-0.5 px-3 py-2.5 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-4 sm:py-3">
+                                  <div className="min-w-0 flex-1">
+                                    <p className="font-medium text-slate-900 truncate">
+                                      {tx.description?.trim() || 'Expense'}
+                                    </p>
+                                    <p className="text-xs text-slate-500">
+                                      {getCategoryLabel(tx.categoryId)} · {displayName(tx.paidBy)} paid
+                                    </p>
+                                  </div>
+                                  <span className="flex-shrink-0 font-medium text-slate-900">
+                                    {formatAmount(tx.amount, tx.currency)}
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
                           </div>
-                          <span className="flex-shrink-0 font-medium text-slate-900">
-                            {formatAmount(tx.amount, tx.currency)}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-              </div>
+                        ))}
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setTransactionHistoryShowMore((s) => !s)}
+                      className="mt-3 flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-900"
+                      aria-expanded={transactionHistoryShowMore}
+                    >
+                      <span
+                        className="text-slate-400 transition-transform"
+                        style={{ transform: transactionHistoryShowMore ? 'rotate(90deg)' : 'rotate(0deg)' }}
+                        aria-hidden
+                      >
+                        ▶
+                      </span>
+                      {transactionHistoryShowMore
+                        ? 'Show less'
+                        : `Show ${dateKeys.length - 3} more day${dateKeys.length - 3 === 1 ? '' : 's'}`}
+                    </button>
+                  </>
+                )}
+              </>
             )}
           </section>
         </>

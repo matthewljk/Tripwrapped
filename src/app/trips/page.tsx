@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { getCurrentUser, signOut } from 'aws-amplify/auth';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../../amplify/data/resource';
@@ -10,10 +10,10 @@ import { useUserProfile } from '@/hooks/useUserProfile';
 
 const client = generateClient<Schema>();
 
-const CURRENCIES = ['USD', 'EUR', 'GBP', 'SGD', 'AUD', 'JPY', 'CAD', 'CHF', 'THB', 'MYR', 'IDR', 'PHP', 'VND'];
+const CURRENCIES = ['USD', 'EUR', 'GBP', 'SGD', 'AUD', 'JPY', 'KRW', 'CAD', 'CHF', 'THB', 'MYR', 'IDR', 'PHP', 'VND'];
 
 export default function TripsPage() {
-  const { trips, activeTripId, activeTrip, setActiveTripId, loading, hasTrip, refresh } = useActiveTrip();
+  const { trips, activeTripId, activeTrip, setActiveTripId, leaveTrip, loading, hasTrip, refresh } = useActiveTrip();
   const { username, suggestedUsername, hasProfile, loading: profileLoading, error: loadError, setUsernameAndSave, profileAvailable } = useUserProfile();
   const [profileValue, setProfileValue] = useState('');
   const [profileSaving, setProfileSaving] = useState(false);
@@ -22,7 +22,8 @@ export default function TripsPage() {
   const [createCode, setCreateCode] = useState('');
   const [createName, setCreateName] = useState('');
   const [createStartDate, setCreateStartDate] = useState('');
-  const [createBaseCurrency, setCreateBaseCurrency] = useState('USD');
+  const [createEndDate, setCreateEndDate] = useState('');
+  const [createBaseCurrency, setCreateBaseCurrency] = useState('SGD');
   const [createBudgetPerPax, setCreateBudgetPerPax] = useState('');
   const [createAllowAnyDelete, setCreateAllowAnyDelete] = useState(false);
   const [joinCode, setJoinCode] = useState('');
@@ -36,20 +37,58 @@ export default function TripsPage() {
   const [settingsSaved, setSettingsSaved] = useState(false);
   const [settingsBaseCurrency, setSettingsBaseCurrency] = useState('');
   const [settingsStartDate, setSettingsStartDate] = useState('');
+  const [settingsEndDate, setSettingsEndDate] = useState('');
   const [settingsBudgetPerPax, setSettingsBudgetPerPax] = useState('');
   const [settingsAllowAnyDelete, setSettingsAllowAnyDelete] = useState(false);
+  const [createSectionExpanded, setCreateSectionExpanded] = useState(false);
+  const [settingsSectionExpanded, setSettingsSectionExpanded] = useState(false);
+  const [leaveBusy, setLeaveBusy] = useState(false);
+  const didAutoExpandSettingsRef = useRef(false);
 
   useEffect(() => {
     setProfileValue(username ?? suggestedUsername ?? '');
   }, [username, suggestedUsername]);
 
+  // When switching trip, allow auto-expand again for the new trip
+  useEffect(() => {
+    didAutoExpandSettingsRef.current = false;
+  }, [activeTripId]);
+
+  // If trip already has settings (currency, dates, budget), show settings expanded by default
+  useEffect(() => {
+    if (!activeTrip) return;
+    const hasSettings = !!(
+      (activeTrip.baseCurrency ?? '').trim() ||
+      (activeTrip.startDate ?? '').trim() ||
+      (activeTrip.endDate ?? '').trim() ||
+      (activeTrip.budgetPerPax != null && activeTrip.budgetPerPax > 0)
+    );
+    if (hasSettings && !didAutoExpandSettingsRef.current) {
+      setSettingsSectionExpanded(true);
+      didAutoExpandSettingsRef.current = true;
+    }
+  }, [activeTrip, activeTripId]);
+
+  // Keep trip settings form in sync with saved trip data (so when user expands they see saved values)
   useEffect(() => {
     if (!activeTrip) return;
     setSettingsBaseCurrency(activeTrip.baseCurrency ?? '');
     setSettingsStartDate(activeTrip.startDate ?? '');
+    setSettingsEndDate(activeTrip.endDate ?? '');
     setSettingsBudgetPerPax(activeTrip.budgetPerPax != null ? String(activeTrip.budgetPerPax) : '');
     setSettingsAllowAnyDelete(activeTrip.allowAnyMemberToDelete === true);
-  }, [activeTrip?.id, activeTrip?.baseCurrency, activeTrip?.startDate, activeTrip?.budgetPerPax, activeTrip?.allowAnyMemberToDelete]);
+  }, [activeTrip?.id, activeTrip?.baseCurrency, activeTrip?.startDate, activeTrip?.endDate, activeTrip?.budgetPerPax, activeTrip?.allowAnyMemberToDelete]);
+
+  // When user expands Trip settings, re-sync from trip so fields always show current saved values
+  useEffect(() => {
+    if (settingsSectionExpanded && activeTrip) {
+      setSettingsBaseCurrency(activeTrip.baseCurrency ?? '');
+      setSettingsStartDate(activeTrip.startDate ?? '');
+      setSettingsEndDate(activeTrip.endDate ?? '');
+      setSettingsBudgetPerPax(activeTrip.budgetPerPax != null ? String(activeTrip.budgetPerPax) : '');
+      setSettingsAllowAnyDelete(activeTrip.allowAnyMemberToDelete === true);
+    }
+  }, [settingsSectionExpanded, activeTrip]);
 
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,6 +132,7 @@ export default function TripsPage() {
         name: createName.trim() || null,
         allowAnyMemberToDelete: createAllowAnyDelete,
         startDate: createStartDate.trim() || null,
+        endDate: createEndDate.trim() || null,
         baseCurrency: createBaseCurrency || null,
         budgetPerPax: budgetVal != null && !Number.isNaN(budgetVal) ? budgetVal : null,
       });
@@ -103,7 +143,8 @@ export default function TripsPage() {
       setCreateCode('');
       setCreateName('');
       setCreateStartDate('');
-      setCreateBaseCurrency('USD');
+      setCreateEndDate('');
+      setCreateBaseCurrency('SGD');
       setCreateBudgetPerPax('');
       setCreateSuccess(true);
       refresh();
@@ -155,86 +196,66 @@ export default function TripsPage() {
 
   return (
     <div className="mx-auto max-w-2xl content-padding-x pb-28 pt-20 sm:pb-24 sm:pt-24 content-wrap">
-      {/* Profile first */}
       <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Account</h1>
-      <p className="mt-2 text-sm text-slate-600 sm:text-base">Profile and trips.</p>
+      <p className="mt-2 text-sm text-slate-600 sm:text-base">Trips and profile.</p>
 
-      <section className="card mt-6 p-4 sm:mt-8 sm:p-6">
-        <h2 className="text-lg font-semibold text-slate-900">Profile</h2>
-        <p className="mt-1 text-sm text-slate-600">Manage your username and account.</p>
-        {!profileAvailable && (
-          <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
-            <p className="text-sm font-medium text-amber-800">Profile (username) is not available yet</p>
-            <p className="mt-1 text-xs text-amber-700">Deploy the backend so the UserProfile model is available (e.g. npx ampx sandbox), then refresh.</p>
-          </div>
-        )}
-        {profileAvailable && (
-          <>
-            {loadError && <p className="mt-2 text-sm font-medium text-red-600">{loadError}</p>}
-            <form onSubmit={handleProfileSubmit} className="mt-4 space-y-4">
-              <div>
-                <label htmlFor="profile-username" className="block text-sm font-medium text-slate-700">Display name</label>
-                <input
-                  id="profile-username"
-                  type="text"
-                  value={profileValue}
-                  onChange={(e) => setProfileValue(e.target.value)}
-                  placeholder="e.g. johndoe"
-                  maxLength={50}
-                  className="mt-2 block w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
-                  disabled={profileSaving}
-                />
-              </div>
-              {profileSaveError && <p className="text-sm font-medium text-red-600">{profileSaveError}</p>}
-              {profileSaveSuccess && <p className="text-sm font-medium text-slate-600">Username saved.</p>}
-              <button type="submit" disabled={profileSaving} className="btn-primary">{profileSaving ? 'Saving…' : 'Save username'}</button>
-            </form>
-          </>
-        )}
-        <div className="mt-6 border-t border-slate-100 pt-4">
-          <button
-            type="button"
-            onClick={() => signOut()}
-            className="text-sm font-medium text-slate-600 hover:text-slate-900"
-          >
-            Sign out
-          </button>
-        </div>
-      </section>
-
-      <section className="card mt-6 p-4 sm:mt-8 sm:p-6">
-        <h2 className="text-lg font-semibold text-slate-900">Password</h2>
-        <p className="mt-1 text-sm text-slate-600">Use &quot;Forgot password&quot; on the sign-in screen or your identity provider (e.g. Google account settings) to change your password.</p>
-      </section>
-
-      {/* Trips */}
-      <h2 className="mt-10 text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">Trips</h2>
-      <p className="mt-1 text-sm text-slate-600 sm:text-base">Join a trip with a code or create your own.</p>
+      {/* 1. Active trip first */}
       {hasTrip && (
-        <section className="card mt-6 p-4 sm:mt-10 sm:p-8">
+        <section className="card mt-6 p-4 sm:mt-8 sm:p-6">
           <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">Active trip</p>
           <p className="mt-2 text-xl font-bold text-slate-900">{activeTrip ? activeTrip.name || activeTrip.tripCode : '—'}</p>
           {activeTrip && (
             <p className="mt-2 text-slate-600">Share code: <span className="font-mono font-semibold text-slate-900">{activeTrip.tripCode}</span></p>
           )}
-          {trips.length > 1 && (
-            <div className="mt-6">
-              <label htmlFor="trip-select" className="sr-only">Switch trip</label>
-              <select
-                id="trip-select"
-                value={activeTripId ?? ''}
-                onChange={(e) => setActiveTripId(e.target.value || null)}
-                className="w-full max-w-sm rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
+          <div className="mt-6">
+            <label htmlFor="trip-select" className="block text-sm font-medium text-slate-700">Active trip</label>
+            <select
+              id="trip-select"
+              value={activeTripId ?? ''}
+              onChange={(e) => setActiveTripId(e.target.value || null)}
+              className="mt-2 block w-full max-w-sm rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
+            >
+              {trips.map((t) => (
+                <option key={t.id} value={t.id}>{t.name || t.tripCode} · {t.tripCode}</option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-slate-500">Switch which trip you’re viewing and editing.</p>
+          </div>
+          {activeTrip?.isActualMember && activeTripId && (
+            <div className="mt-4">
+              <button
+                type="button"
+                disabled={leaveBusy}
+                onClick={async () => {
+                  if (!window.confirm('Leave this trip? You’ll stop being a member. If you were the last member, the trip and all its photos and data will be deleted.')) return;
+                  setLeaveBusy(true);
+                  try {
+                    await leaveTrip(activeTripId);
+                  } finally {
+                    setLeaveBusy(false);
+                  }
+                }}
+                className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2 disabled:opacity-50"
               >
-                {trips.map((t) => (
-                  <option key={t.id} value={t.id}>{t.name || t.tripCode} · {t.tripCode}</option>
-                ))}
-              </select>
+                {leaveBusy ? 'Leaving…' : 'Leave trip'}
+              </button>
             </div>
           )}
-          {activeTrip && activeTrip.role === 'owner' && (
+          {/* Trip settings: expandable; any member can edit; Save takes effect */}
+          {activeTrip && (
             <div className="mt-6 border-t border-slate-200 pt-6">
-              <p className="text-sm font-semibold text-slate-700">Trip settings</p>
+              <button
+                type="button"
+                onClick={() => setSettingsSectionExpanded((e) => !e)}
+                className="flex w-full items-center justify-between text-left"
+                aria-expanded={settingsSectionExpanded}
+              >
+                <span className="text-sm font-semibold text-slate-700">Trip settings</span>
+                <span className="text-slate-500" aria-hidden>{settingsSectionExpanded ? '−' : '+'}</span>
+              </button>
+              {settingsSectionExpanded && (
+                <>
+              <p className="mt-1 text-xs text-slate-500">Any trip member can change these. Save to apply.</p>
               <div className="mt-3">
                 <label htmlFor="trip-base-currency" className="block text-sm font-medium text-slate-700">Trip currency</label>
                 <p className="mt-0.5 text-xs text-slate-500">Used when adding transactions and for O$P$.</p>
@@ -260,6 +281,18 @@ export default function TripsPage() {
                   value={settingsStartDate}
                   disabled={settingsBusy}
                   onChange={(e) => setSettingsStartDate(e.target.value)}
+                  className="mt-2 block w-full max-w-xs rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
+                />
+              </div>
+              <div className="mt-4">
+                <label htmlFor="trip-end-date" className="block text-sm font-medium text-slate-700">Trip end date</label>
+                <p className="mt-0.5 text-xs text-slate-500">Optional. Used for trip duration and date range.</p>
+                <input
+                  id="trip-end-date"
+                  type="date"
+                  value={settingsEndDate}
+                  disabled={settingsBusy}
+                  onChange={(e) => setSettingsEndDate(e.target.value)}
                   className="mt-2 block w-full max-w-xs rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
                 />
               </div>
@@ -303,6 +336,7 @@ export default function TripsPage() {
                         id: activeTrip.id,
                         baseCurrency: settingsBaseCurrency.trim() || null,
                         startDate: settingsStartDate.trim() || null,
+                        endDate: settingsEndDate.trim() || null,
                         budgetPerPax: budgetVal != null && !Number.isNaN(budgetVal) && budgetVal >= 0 ? budgetVal : null,
                         allowAnyMemberToDelete: settingsAllowAnyDelete,
                       });
@@ -319,11 +353,15 @@ export default function TripsPage() {
                 </button>
                 {settingsSaved && <span className="text-sm text-green-600">Saved</span>}
               </div>
+                </>
+              )}
             </div>
           )}
         </section>
       )}
-      <section className="card mt-6 p-4 sm:mt-10 sm:p-8">
+
+      {/* 2. Join a trip */}
+      <section className="card mt-6 p-4 sm:mt-8 sm:p-6">
         <h2 className="text-lg font-bold text-slate-900 sm:text-xl">Join a trip</h2>
         <p className="mt-2 text-sm text-slate-600">Enter the code someone shared with you.</p>
         <form onSubmit={handleJoin} className="mt-4 space-y-4 sm:mt-6 sm:space-y-5">
@@ -336,8 +374,20 @@ export default function TripsPage() {
           <button type="submit" disabled={joinBusy} className="btn-primary w-full sm:w-auto">{joinBusy ? 'Joining…' : 'Join trip'}</button>
         </form>
       </section>
-      <section className="card mt-6 p-4 sm:mt-10 sm:p-8">
-        <h2 className="text-lg font-bold text-slate-900 sm:text-xl">Create a trip</h2>
+
+      {/* 3. Create a trip (click to expand) */}
+      <section className="card mt-6 p-4 sm:mt-8 sm:p-6">
+        <button
+          type="button"
+          onClick={() => setCreateSectionExpanded((e) => !e)}
+          className="flex w-full items-center justify-between text-left"
+          aria-expanded={createSectionExpanded}
+        >
+          <h2 className="text-lg font-bold text-slate-900 sm:text-xl">Create a trip</h2>
+          <span className="text-slate-500" aria-hidden>{createSectionExpanded ? '−' : '+'}</span>
+        </button>
+        {createSectionExpanded && (
+          <>
         <p className="mt-2 text-sm text-slate-600">Pick a unique code others will use to join.</p>
         <form onSubmit={handleCreate} className="mt-4 space-y-4 sm:mt-6 sm:space-y-5">
           <div>
@@ -351,6 +401,10 @@ export default function TripsPage() {
           <div>
             <label htmlFor="create-start-date" className="block text-sm font-semibold text-slate-700">Start date <span className="font-normal text-slate-400">(optional)</span></label>
             <input id="create-start-date" type="date" value={createStartDate} onChange={(e) => setCreateStartDate(e.target.value)} className="mt-2 block w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2" disabled={createBusy} />
+          </div>
+          <div>
+            <label htmlFor="create-end-date" className="block text-sm font-semibold text-slate-700">End date <span className="font-normal text-slate-400">(optional)</span></label>
+            <input id="create-end-date" type="date" value={createEndDate} onChange={(e) => setCreateEndDate(e.target.value)} className="mt-2 block w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2" disabled={createBusy} />
           </div>
           <div>
             <label htmlFor="create-base-currency" className="block text-sm font-semibold text-slate-700">Trip currency</label>
@@ -399,6 +453,58 @@ export default function TripsPage() {
           {createSuccess && <p className="text-sm font-medium text-slate-600">Trip created.</p>}
           <button type="submit" disabled={createBusy} className="btn-primary w-full sm:w-auto">{createBusy ? 'Creating…' : 'Create trip'}</button>
         </form>
+          </>
+        )}
+      </section>
+
+      {/* 4. Profile (username) */}
+      <section className="card mt-6 p-4 sm:mt-8 sm:p-6">
+        <h2 className="text-lg font-semibold text-slate-900">Profile</h2>
+        <p className="mt-1 text-sm text-slate-600">Your display name.</p>
+        {!profileAvailable && (
+          <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
+            <p className="text-sm font-medium text-amber-800">Profile (username) is not available yet</p>
+            <p className="mt-1 text-xs text-amber-700">Deploy the backend so the UserProfile model is available (e.g. npx ampx sandbox), then refresh.</p>
+          </div>
+        )}
+        {profileAvailable && (
+          <>
+            {loadError && <p className="mt-2 text-sm font-medium text-red-600">{loadError}</p>}
+            <form onSubmit={handleProfileSubmit} className="mt-4 space-y-4">
+              <div>
+                <label htmlFor="profile-username" className="block text-sm font-medium text-slate-700">Display name</label>
+                <input
+                  id="profile-username"
+                  type="text"
+                  value={profileValue}
+                  onChange={(e) => setProfileValue(e.target.value)}
+                  placeholder="e.g. johndoe"
+                  maxLength={50}
+                  className="mt-2 block w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
+                  disabled={profileSaving}
+                />
+              </div>
+              {profileSaveError && <p className="text-sm font-medium text-red-600">{profileSaveError}</p>}
+              {profileSaveSuccess && <p className="text-sm font-medium text-slate-600">Username saved.</p>}
+              <button type="submit" disabled={profileSaving} className="btn-primary">{profileSaving ? 'Saving…' : 'Save username'}</button>
+            </form>
+          </>
+        )}
+        {/* 5. Sign out */}
+        <div className="mt-6 border-t border-slate-100 pt-4">
+          <button
+            type="button"
+            onClick={() => signOut()}
+            className="text-sm font-medium text-slate-600 hover:text-slate-900"
+          >
+            Sign out
+          </button>
+        </div>
+      </section>
+
+      <section className="card mt-6 p-4 sm:mt-8 sm:p-6">
+        <h2 className="text-lg font-semibold text-slate-900">Password</h2>
+        <p className="mt-1 text-sm text-slate-600">Use &quot;Forgot password&quot; on the sign-in screen or your identity provider (e.g. Google account settings) to change your password.</p>
       </section>
     </div>
   );

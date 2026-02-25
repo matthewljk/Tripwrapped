@@ -1,9 +1,17 @@
 import { type ClientSchema, a, defineData, defineFunction } from '@aws-amplify/backend';
 
 const deleteTripMediaHandler = defineFunction({
+  name: 'deleteTripMedia',
   entry: './delete-media-handler/handler.ts',
   memoryMB: 128,
   timeoutSeconds: 15,
+});
+
+const cleanupEmptyTripHandler = defineFunction({
+  name: 'cleanupEmptyTrip',
+  entry: './cleanup-empty-trip-handler/handler.ts',
+  memoryMB: 128,
+  timeoutSeconds: 60,
 });
 
 const schema = a.schema({
@@ -13,6 +21,7 @@ const schema = a.schema({
       name: a.string(),
       allowAnyMemberToDelete: a.boolean(),
       startDate: a.string(),
+      endDate: a.string(),
       baseCurrency: a.string(),
       budgetPerPax: a.float(),
     })
@@ -115,6 +124,18 @@ const schema = a.schema({
     .returns(a.ref('DeleteTripMediaResult'))
     .authorization((allow) => [allow.authenticated()])
     .handler(a.handler.function(deleteTripMediaHandler)),
+
+  CleanupEmptyTripResult: a.customType({
+    success: a.boolean(),
+    message: a.string(),
+  }),
+
+  cleanupEmptyTrip: a
+    .mutation()
+    .arguments({ tripId: a.id().required() })
+    .returns(a.ref('CleanupEmptyTripResult'))
+    .authorization((allow) => [allow.authenticated()])
+    .handler(a.handler.function(cleanupEmptyTripHandler)),
 });
 
 export type Schema = ClientSchema<typeof schema>;

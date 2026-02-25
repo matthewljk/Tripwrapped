@@ -1,6 +1,6 @@
 # TripWrapped
 
-Shared trip photo/video galleries. Sign in (Google or email), create or join trips by code, upload media, view gallery, daily journal (photo trail + per-location ratings/reviews), and a trip map. Next.js 16 (App Router) + AWS Amplify Gen 2.
+Shared trip photo/video galleries and expense splitting. Sign in (Google or email), create or join trips by code, upload media, view gallery, daily journal (photo trail + per-location ratings/reviews), trip map, and O$P$ (balances, budget, settlements). Next.js 16 (App Router) + AWS Amplify Gen 2.
 
 ---
 
@@ -39,12 +39,13 @@ Shared trip photo/video galleries. Sign in (Google or email), create or join tri
 src/
   app/
     layout.tsx          # Root layout, font, ClientLayout
-    page.tsx            # / — upload
+    page.tsx            # / — Add: upload, Add transaction (expandable)
     gallery/page.tsx    # /gallery
     journal/page.tsx    # Daily Journal (POIs, highlight, ratings)
+    ops/page.tsx        # O$P$ — balances, budget, settlements, transaction history
     wrap-it-up/page.tsx # Trip map (Mapbox)
-    trips/page.tsx      # /trips
-    profile/page.tsx    # /profile
+    trips/page.tsx      # /trips — Account (active trip, join, create, profile, sign out)
+    profile/page.tsx    # Redirects to /trips
     globals.css
   components/
     ClientLayout.tsx    # Wraps children with Navbar, ConfigureAmplify
@@ -54,6 +55,7 @@ src/
     MediaGallery.tsx    # Grid + metadata view, sort, load more, list cache, download/delete
     UploadModal.tsx
     TripSelector.tsx
+    TransactionForm.tsx # Add transaction: category, date (or accommodation start/end), split; currency from trip
     TripMap.tsx         # Mapbox Standard, 3D terrain, memory heatmap, photo markers
     DailyCard.tsx       # Journal day card (highlight, Photo Trail, per-location expand, rating/review, summary)
     SetUsernamePrompt.tsx
@@ -71,8 +73,9 @@ src/
 amplify/
   backend.ts            # DynamoDB on-demand billing (pay-per-request, hobby-friendly)
   auth/resource.ts
-  data/resource.ts      # Schema (Trip startDate; Media locationName, googlePlaceId, rating, review), deleteTripMedia
-  data/delete-media-handler/handler.ts
+  data/resource.ts      # Schema (Trip startDate, endDate, budgetPerPax; Media …), deleteTripMedia + cleanupEmptyTrip
+  data/delete-media-handler/handler.ts   # deleteTripMedia (name: deleteTripMedia)
+  data/cleanup-empty-trip-handler/handler.ts  # cleanupEmptyTrip when last member leaves (name: cleanupEmptyTrip)
   storage/resource.ts
 ```
 
@@ -97,7 +100,7 @@ amplify/
 - **One lockfile:** Commit `package-lock.json` whenever you change deps so Amplify’s `npm ci` succeeds. Use `npm install` locally (not `npm ci`) for day-to-day installs.
 - **Broken local install:** Run `rm -rf node_modules && npm install`.
 - **Config:** Local uses `amplify_outputs.json` at repo root (copy from sandbox: `cp .amplify/artifacts/amplify_outputs.json ./`). Production uses a **different** backend: set `NEXT_PUBLIC_AMPLIFY_OUTPUTS` in Amplify Hosting to the stringified JSON from the production backend.
-- **Backend cost:** DynamoDB is set to on-demand (pay-per-request) and the delete-media Lambda uses minimal memory; suitable for hobby use.
+- **Backend cost:** DynamoDB is set to on-demand (pay-per-request). Two Lambdas (delete-media, cleanup-empty-trip) use minimal memory; suitable for hobby use. Each function has an explicit `name` in `amplify/data/resource.ts` to avoid CDK construct ID clashes (both entry files are `handler.ts`).
 
 **Two backends:** Local and production use **different** Amplify backends (e.g. sandbox vs pipeline-deployed). When you change the schema, deploy the production backend too so both have the same models (e.g. `Media` with `lat`, `lng`, `timestamp`).
 
@@ -115,12 +118,13 @@ amplify/
 
 | Path           | Role |
 |----------------|------|
-| `/`            | Upload: trip selector, multi-file upload (images + video). HEIC/HEIF converted to JPEG in-browser (heic2any). Recent list, delete. |
-| `/gallery`     | Masonry grid (load more), metadata table with sticky preview column, sort (date/type/user/favorites), lightbox, download/delete, favorite. HEIC not loaded (placeholder); URLs loaded in batches. |
-| `/journal`    | Daily Journal: media by date and POI (~100 m). **Photo Trail** (time – icon – location); tap a location to expand only that one (rating, review, “Is this location accurate?” → “Where was this photo taken?”). Google Places for POI names (type-priority when multiple nearby); names cached on Media. Summary: average stars, locations visited, contributor avatars. Highlight image loads when in view; fallback to another photo if load fails. |
+| `/`            | **Add:** trip selector; photo/video upload; **Add transaction** (expandable, category → date; accommodation = start/end date; currency defaults to trip currency). HEIC → JPEG in-browser. |
+| `/gallery`     | Masonry grid (load more), sort (date/type/user/favorites), lightbox, select mode for download/delete, favorite. Media loads when ready (no flash). |
+| `/journal`    | Daily Journal: media by date and POI (~100 m). Photo Trail, per-location rating/review, Google Places POI names, highlight image. |
 | `/wrap-it-up`  | Map (Mapbox Standard, 3D terrain): memory heatmap, photo markers. |
-| `/trips`       | Create or join by code, set active trip, trip start date, trip settings (e.g. who can delete). |
-| `/profile`     | Username, manage/leave trips. |
+| `/ops`         | **O$P$:** your balance, budget (trip budget per person, total expense, % utilised, per person), settle-up list, transaction history (top 3 days by default, expand for more). |
+| `/trips`       | **Account:** active trip (selector, trip settings expandable, leave trip), join by code, create trip (expandable). Profile (username), sign out, password. Trip settings: currency (default SGD), start/end date, budget per person, who can delete; any member can edit and save. Leave trip (red button); when last member leaves, trip and all media/transactions are deleted. |
+| `/profile`     | Redirects to `/trips`. |
 
 **Wrap It Up:** Requires `NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN` in `.env.local` (or in Amplify Hosting env). Get a token at [mapbox.com](https://account.mapbox.com/access-tokens/).
 

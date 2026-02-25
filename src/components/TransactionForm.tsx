@@ -12,7 +12,7 @@ import {
 
 const dataClient = generateClient<Schema>();
 
-const CURRENCIES = ['USD', 'EUR', 'GBP', 'SGD', 'AUD', 'JPY', 'CAD', 'CHF', 'THB', 'MYR', 'IDR', 'PHP', 'VND'] as const;
+const CURRENCIES = ['USD', 'EUR', 'GBP', 'SGD', 'AUD', 'JPY', 'KRW', 'CAD', 'CHF', 'THB', 'MYR', 'IDR', 'PHP', 'VND'] as const;
 
 export type TransactionFormProps = {
   activeTripId: string;
@@ -63,7 +63,7 @@ export default function TransactionForm({
 }: TransactionFormProps) {
   const { participants, loading: loadingParticipants } = useTripParticipants(activeTripId);
   const [amount, setAmount] = useState('');
-  const [currency, setCurrency] = useState(baseCurrency || '');
+  const [currency, setCurrency] = useState(() => baseCurrency || '');
   const [description, setDescription] = useState('');
   const [transactionDate, setTransactionDate] = useState(() => {
     const d = new Date();
@@ -79,10 +79,11 @@ export default function TransactionForm({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Pre-fill currency from trip when still empty (e.g. after navigation), but never overwrite user's selection
+  // Always show the trip's saved currency (so user sees e.g. KRW when that was last saved for the trip)
+  const tripCurrency = baseCurrency ?? '';
   useEffect(() => {
-    if (baseCurrency && !currency) setCurrency(baseCurrency);
-  }, [baseCurrency, currency]);
+    if (tripCurrency) setCurrency(tripCurrency);
+  }, [tripCurrency]);
 
   useEffect(() => {
     setIncludedInSplit(new Set(participants.map((p) => p.userId)));
@@ -258,32 +259,6 @@ export default function TransactionForm({
       </div>
 
       <div>
-        <label htmlFor="tx-date" className="block text-sm font-medium text-slate-700">Date</label>
-        <input
-          id="tx-date"
-          type="date"
-          value={transactionDate}
-          onChange={(e) => setTransactionDate(e.target.value)}
-          className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
-        />
-      </div>
-
-      <div>
-        <label htmlFor="tx-paidby" className="block text-sm font-medium text-slate-700">Who paid</label>
-        <select
-          id="tx-paidby"
-          value={paidBy}
-          onChange={(e) => setPaidBy(e.target.value)}
-          className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
-        >
-          <option value="">Select…</option>
-          {participants.map((p) => (
-            <option key={p.userId} value={p.userId}>{displayParticipant(p)}</option>
-          ))}
-        </select>
-      </div>
-
-      <div>
         <label htmlFor="tx-category" className="block text-sm font-medium text-slate-700">Category</label>
         <select
           id="tx-category"
@@ -297,28 +272,28 @@ export default function TransactionForm({
         </select>
       </div>
 
-      {isAccommodation && (
+      {isAccommodation ? (
         <div className="space-y-4 rounded-xl border border-slate-200 bg-slate-50/50 p-4">
           <p className="text-sm font-medium text-slate-700">Stay dates</p>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label htmlFor="tx-checkin" className="block text-xs font-medium text-slate-600">Check-in</label>
+              <label htmlFor="tx-checkin" className="block text-sm font-medium text-slate-700">Start date</label>
               <input
                 id="tx-checkin"
                 type="date"
                 value={checkInDate}
                 onChange={(e) => setCheckInDate(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
+                className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
               />
             </div>
             <div>
-              <label htmlFor="tx-checkout" className="block text-xs font-medium text-slate-600">Check-out</label>
+              <label htmlFor="tx-checkout" className="block text-sm font-medium text-slate-700">End date</label>
               <input
                 id="tx-checkout"
                 type="date"
                 value={checkOutDate}
                 onChange={(e) => setCheckOutDate(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
+                className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
               />
             </div>
           </div>
@@ -338,7 +313,33 @@ export default function TransactionForm({
             </p>
           )}
         </div>
+      ) : (
+        <div>
+          <label htmlFor="tx-date" className="block text-sm font-medium text-slate-700">Date</label>
+          <input
+            id="tx-date"
+            type="date"
+            value={transactionDate}
+            onChange={(e) => setTransactionDate(e.target.value)}
+            className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
+          />
+        </div>
       )}
+
+      <div>
+        <label htmlFor="tx-paidby" className="block text-sm font-medium text-slate-700">Who paid</label>
+        <select
+          id="tx-paidby"
+          value={paidBy}
+          onChange={(e) => setPaidBy(e.target.value)}
+          className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
+        >
+          <option value="">Select…</option>
+          {participants.map((p) => (
+            <option key={p.userId} value={p.userId}>{displayParticipant(p)}</option>
+          ))}
+        </select>
+      </div>
 
       <div>
         <p className="text-sm font-medium text-slate-700">Split between</p>
