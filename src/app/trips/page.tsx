@@ -12,6 +12,11 @@ const client = generateClient<Schema>();
 
 const CURRENCIES = ['USD', 'EUR', 'GBP', 'SGD', 'AUD', 'JPY', 'KRW', 'CAD', 'CHF', 'THB', 'MYR', 'IDR', 'PHP', 'VND'];
 
+/** Normalise trip code: uppercase, no spaces (for uniqueness and consistent lookup). */
+function normalizeTripCode(value: string): string {
+  return value.trim().replace(/\s+/g, '').toUpperCase();
+}
+
 export default function TripsPage() {
   const { trips, activeTripId, activeTrip, setActiveTripId, leaveTrip, loading, hasTrip, refresh } = useActiveTrip();
   const { username, suggestedUsername, hasProfile, loading: profileLoading, error: loadError, setUsernameAndSave, profileAvailable } = useUserProfile();
@@ -36,6 +41,7 @@ export default function TripsPage() {
   const [settingsBusy, setSettingsBusy] = useState(false);
   const [settingsSaved, setSettingsSaved] = useState(false);
   const [settingsSaveError, setSettingsSaveError] = useState<string | null>(null);
+  const [settingsBackendWarning, setSettingsBackendWarning] = useState<string | null>(null);
   const [settingsBaseCurrency, setSettingsBaseCurrency] = useState('');
   const [settingsStartDate, setSettingsStartDate] = useState('');
   const [settingsEndDate, setSettingsEndDate] = useState('');
@@ -70,32 +76,19 @@ export default function TripsPage() {
     }
   }, [activeTrip, activeTripId]);
 
-  // Keep trip settings form in sync with saved trip data; don't overwrite with empty (so saved KRW stays when trip data is stale)
+  // Keep trip settings form in sync with saved trip data from the backend (currency, dates, budget, etc.)
   useEffect(() => {
     if (!activeTrip) return;
-    setSettingsBaseCurrency((prev) => (activeTrip.baseCurrency?.trim() ? activeTrip.baseCurrency!.trim() : prev));
-    setSettingsStartDate((prev) => (activeTrip.startDate?.trim() ? activeTrip.startDate.trim() : prev));
-    setSettingsEndDate((prev) => (activeTrip.endDate?.trim() ? activeTrip.endDate.trim() : prev));
-    setSettingsBudgetPerPax((prev) => (activeTrip.budgetPerPax != null && !Number.isNaN(activeTrip.budgetPerPax) ? String(activeTrip.budgetPerPax) : prev));
+    setSettingsBaseCurrency((activeTrip.baseCurrency ?? '').trim());
+    setSettingsStartDate((activeTrip.startDate ?? '').trim());
+    setSettingsEndDate((activeTrip.endDate ?? '').trim());
+    setSettingsBudgetPerPax(
+      activeTrip.budgetPerPax != null && !Number.isNaN(activeTrip.budgetPerPax)
+        ? String(activeTrip.budgetPerPax)
+        : ''
+    );
     setSettingsAllowAnyDelete(activeTrip.allowAnyMemberToDelete === true);
   }, [activeTrip?.id, activeTrip?.baseCurrency, activeTrip?.startDate, activeTrip?.endDate, activeTrip?.budgetPerPax, activeTrip?.allowAnyMemberToDelete]);
-
-  // When user first expands Trip settings, sync from trip but don't overwrite with empty (trip may not have refreshed yet after save)
-  const prevExpandedRef = useRef(false);
-  useEffect(() => {
-    const justExpanded = settingsSectionExpanded && !prevExpandedRef.current;
-    prevExpandedRef.current = settingsSectionExpanded;
-    if (justExpanded && activeTrip) {
-      const tc = (activeTrip.baseCurrency ?? '').trim();
-      if (tc) setSettingsBaseCurrency(activeTrip.baseCurrency ?? '');
-      const ts = (activeTrip.startDate ?? '').trim();
-      if (ts) setSettingsStartDate(activeTrip.startDate ?? '');
-      const te = (activeTrip.endDate ?? '').trim();
-      if (te) setSettingsEndDate(activeTrip.endDate ?? '');
-      if (activeTrip.budgetPerPax != null && activeTrip.budgetPerPax > 0) setSettingsBudgetPerPax(String(activeTrip.budgetPerPax));
-      setSettingsAllowAnyDelete(activeTrip.allowAnyMemberToDelete === true);
-    }
-  }, [settingsSectionExpanded, activeTrip]);
 
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -119,7 +112,7 @@ export default function TripsPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    const code = createCode.trim();
+    const code = normalizeTripCode(createCode);
     if (!code) {
       setCreateError('Enter a trip code');
       return;
@@ -164,7 +157,7 @@ export default function TripsPage() {
 
   const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const code = joinCode.trim();
+    const code = normalizeTripCode(joinCode);
     if (!code) {
       setJoinError('Enter the trip code');
       return;
@@ -338,6 +331,7 @@ export default function TripsPage() {
                     setSettingsBusy(true);
                     setSettingsSaved(false);
                     setSettingsSaveError(null);
+                    setSettingsBackendWarning(null);
                     const savedCurrency = settingsBaseCurrency.trim();
                     // Persist to sessionStorage immediately so Add transaction shows this currency after refresh even if production API update fails or is slow
                     if (savedCurrency && typeof sessionStorage !== 'undefined') {
@@ -358,7 +352,18 @@ export default function TripsPage() {
                       setSettingsStartDate(settingsStartDate.trim());
                       setSettingsEndDate(settingsEndDate.trim());
                       setSettingsBudgetPerPax(budgetVal != null && !Number.isNaN(budgetVal) && budgetVal >= 0 ? String(budgetVal) : '');
-                      refresh();
+                      await refresh();
+                      // If we saved a currency but the server didn't persist it (e.g. production backend on old schema), warn
+                      if (savedCurrency) {
+                        const { data: updated } = await client.models.Trip.get({ id: activeTrip.id });
+                        const serverCurrency = (updated?.baseCurrency ?? '').trim();
+                        if (serverCurrency !== savedCurrency) {
+                          setSettingsBackendWarning(
+                            'Currency is saved in this browser but the server did not store it. Redeploy the production backend (Amplify build or ampx pipeline-deploy) so Trip has baseCurrency.'
+                          );
+                          setTimeout(() => setSettingsBackendWarning(null), 10000);
+                        }
+                      }
                       setTimeout(() => setSettingsSaved(false), 2000);
                     } catch (err) {
                       console.error('Trip settings update failed', err);
@@ -374,6 +379,7 @@ export default function TripsPage() {
                 </button>
                 {settingsSaved && <span className="text-sm text-green-600">Saved</span>}
                 {settingsSaveError && <p className="text-sm text-red-600">{settingsSaveError}</p>}
+                {settingsBackendWarning && <p className="mt-1 text-sm text-amber-700">{settingsBackendWarning}</p>}
               </div>
                 </>
               )}
@@ -389,7 +395,7 @@ export default function TripsPage() {
         <form onSubmit={handleJoin} className="mt-4 space-y-4 sm:mt-6 sm:space-y-5">
           <div>
             <label htmlFor="join-code" className="block text-sm font-semibold text-slate-700">Trip code</label>
-            <input id="join-code" type="text" value={joinCode} onChange={(e) => setJoinCode(e.target.value)} placeholder="e.g. BALI2026" className="mt-2 block w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2" disabled={joinBusy} />
+            <input id="join-code" type="text" value={joinCode} onChange={(e) => setJoinCode(normalizeTripCode(e.target.value))} placeholder="e.g. BALI2026" className="mt-2 block w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2" disabled={joinBusy} />
           </div>
           {joinError && <p className="text-sm font-medium text-red-600">{joinError}</p>}
           {joinSuccess && <p className="text-sm font-medium text-slate-600">You joined the trip.</p>}
@@ -414,7 +420,7 @@ export default function TripsPage() {
         <form onSubmit={handleCreate} className="mt-4 space-y-4 sm:mt-6 sm:space-y-5">
           <div>
             <label htmlFor="create-code" className="block text-sm font-semibold text-slate-700">Trip code</label>
-            <input id="create-code" type="text" value={createCode} onChange={(e) => setCreateCode(e.target.value)} placeholder="e.g. BALI2026" className="mt-2 block w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2" disabled={createBusy} />
+            <input id="create-code" type="text" value={createCode} onChange={(e) => setCreateCode(normalizeTripCode(e.target.value))} placeholder="e.g. BALI2026" className="mt-2 block w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2" disabled={createBusy} />
           </div>
           <div>
             <label htmlFor="create-name" className="block text-sm font-semibold text-slate-700">Name <span className="font-normal text-slate-400">(optional)</span></label>

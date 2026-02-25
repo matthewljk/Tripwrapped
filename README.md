@@ -112,6 +112,8 @@ amplify/
 
 **Metadata not saved on upload in production:** The app sends lat/lng/timestamp when creating each Media record. If the production backend was deployed before the `Media` model had these fields, they won't be stored. Fix: deploy the production backend with the current schema (see "How to sync both backends" above). After that, new uploads will persist metadata. No frontend change required.
 
+**Trip currency (or other Trip settings) not saving in production:** Trip settings are stored on the `Trip` model (e.g. `baseCurrency`). If the production backend was deployed before these fields existed in the schema, the server won't persist them. The app will show an amber message after Save if it detects the server didn't store the currency. Fix: ensure the **backend** phase of your Amplify build runs and succeeds (see `amplify.yml`: `npx ampx pipeline-deploy`). If you use a build that only runs the frontend, run `npx ampx pipeline-deploy --branch main --app-id <AMPLIFY_APP_ID>` from the repo, then redeploy the frontend. After the production backend has the current schema, Trip settings will persist.
+
 ---
 
 ## First-time user experience
@@ -119,7 +121,7 @@ amplify/
 1. **Landing:** User sees the cover (video background, TripWrapped + “Collecting your memories”) and two actions: **Join a trip** and **Create a trip**. Both open the same auth flow.
 2. **Sign-in popup:** Clicking either opens a modal to **sign in** or **create an account** (Google or email). After they complete auth, the modal closes.
 3. **Username (first time only):** If they don’t have a username yet, a modal asks them to **choose a username** (how they’ll appear on photos/videos). After they save, they’re taken to the account page.
-4. **Account page (/trips):** They land on `/trips` to **join a trip** (by code) or **create a trip**, then use the rest of the app (upload, gallery, journal, O$P$, map).
+4. **Landing after sign-in:** They land on **/** (add page: upload, add transaction). From the account area they can go to **/trips** to join or create a trip.
 
 ---
 
@@ -132,7 +134,7 @@ amplify/
 | `/journal`    | Daily Journal: media by date and POI (~100 m). Photo Trail, per-location rating/review, Google Places POI names, highlight image. |
 | `/wrap-it-up`  | Map (Mapbox Standard, 3D terrain): memory heatmap, photo markers. |
 | `/ops`         | **O$P$:** your balance, budget (trip budget per person, total expense, % utilised, per person), settle-up list, transaction history (top 3 days by default, expand for more). |
-| `/trips`       | **Account:** active trip (selector, trip settings expandable, leave trip), join by code, create trip (expandable). Profile (username), sign out, password. Trip settings: currency (default SGD), start/end date, budget per person, who can delete; any member can edit and save. Leave trip (red button); when last member leaves, trip and all media/transactions are deleted. |
+| `/trips`       | **Account:** active trip (selector, trip settings expandable, leave trip), join by code, create trip (expandable). **Trip codes** are normalised to uppercase with no spaces (e.g. BALI2026) for uniqueness; create and join inputs enforce this. Profile (username), sign out, password. Trip settings: currency (default SGD), start/end date, budget per person, who can delete; any member can edit and save. Leave trip (red button); when last member leaves, trip and all media/transactions are deleted. |
 | `/profile`     | Redirects to `/trips`. |
 
 **Wrap It Up:** Requires `NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN` in `.env.local` (or in Amplify Hosting env). Get a token at [mapbox.com](https://account.mapbox.com/access-tokens/).
