@@ -37,9 +37,10 @@ function getSharesInBase(
     }
   }
 
-  const split = tx.splitBetween?.length || 1;
+  const splitBetween = (tx.splitBetween ?? []).filter((id): id is string => id != null);
+  const split = splitBetween.length || 1;
   const each = amountBase / split;
-  for (const uid of tx.splitBetween ?? []) {
+  for (const uid of splitBetween) {
     map.set(uid, (map.get(uid) ?? 0) + each);
   }
   return map;
