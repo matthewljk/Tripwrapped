@@ -51,7 +51,7 @@ export type WrapRecapData = {
 type MediaRecord = {
   id: string;
   storagePath: string;
-  timestamp: string | null;
+  timestamp?: string | null;
   isFavorite?: boolean | null;
   rating?: number | null;
   review?: string | null;
