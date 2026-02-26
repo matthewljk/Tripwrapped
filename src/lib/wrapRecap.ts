@@ -8,6 +8,7 @@ import { calculateTripDistance } from '@/lib/tripStats';
 import type { MediaWithLocation } from '@/lib/poiClustering';
 import type { Schema } from '../../amplify/data/resource';
 import { getTotalExpenseInBase } from '@/lib/transactionBalances';
+import { DEFAULT_CURRENCY } from '@/lib/constants';
 
 type Transaction = Schema['Transaction']['type'];
 
@@ -170,7 +171,7 @@ export function buildWrapRecap(
       totalPhotos,
       totalVideos,
       totalExpense,
-      baseCurrency: baseCurrency || 'USD',
+      baseCurrency: baseCurrency || DEFAULT_CURRENCY,
       distanceKm,
     },
     days,

@@ -7,6 +7,7 @@ import TripSelector from '@/components/TripSelector';
 import UploadModal from '@/components/UploadModal';
 import TransactionForm from '@/components/TransactionForm';
 import { useActiveTrip } from '@/hooks/useActiveTrip';
+import { DEFAULT_CURRENCY } from '@/lib/constants';
 
 export default function AddPage() {
   const router = useRouter();
@@ -42,7 +43,7 @@ export default function AddPage() {
     typeof window !== 'undefined' && activeTripId
       ? sessionStorage.getItem(`tripwrapped-trip-currency-${activeTripId}`)
       : null;
-  const baseCurrencyForForm = storedCurrency ?? activeTrip?.baseCurrency ?? null;
+  const baseCurrencyForForm = storedCurrency ?? activeTrip?.baseCurrency ?? DEFAULT_CURRENCY;
 
   return (
     <>

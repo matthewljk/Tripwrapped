@@ -119,7 +119,7 @@ export function getExpensesByDay(
     if (!dateStr) continue;
     const amountBase = getTxDayAmount(tx, baseCurrency);
     const cat = tx.categoryId?.trim() || 'other';
-    const curr = tx.currency?.trim() || 'USD';
+    const curr = tx.currency?.trim() || 'KRW';
 
     let day = byDay.get(dateStr);
     if (!day) {

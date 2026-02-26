@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react';
 import { getUrl } from 'aws-amplify/storage';
 import type { WrapRecapData } from '@/lib/wrapRecap';
 import { getVideoTimeline, getLocationNamesForDay } from '@/lib/wrapRecap';
+import { DEFAULT_CURRENCY } from '@/lib/constants';
 
 const URL_EXPIRES_IN = 3600;
 const STATS_DURATION_MS = 4000;
@@ -23,7 +24,7 @@ function formatTripDates(start: string | null, end: string | null): string {
 }
 
 function formatCurrency(amount: number, currency: string): string {
-  return new Intl.NumberFormat(undefined, { style: 'currency', currency: currency || 'USD', maximumFractionDigits: 0 }).format(amount);
+  return new Intl.NumberFormat(undefined, { style: 'currency', currency: currency || DEFAULT_CURRENCY, maximumFractionDigits: 0 }).format(amount);
 }
 
 type Segment =

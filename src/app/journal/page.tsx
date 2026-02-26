@@ -21,6 +21,7 @@ import {
 import { resolveWithGooglePlaces } from '@/lib/googlePlaces';
 import { getExpensesByDay } from '@/lib/transactionBalances';
 import { useTripParticipants } from '@/hooks/useTripParticipants';
+import { DEFAULT_CURRENCY } from '@/lib/constants';
 
 const dataClient = generateClient<Schema>();
 
@@ -130,7 +131,7 @@ export default function JournalPage() {
   const dateKeys = Array.from(byDate.keys()).filter((k) => k !== 'unknown');
   dateKeys.sort((a, b) => b.localeCompare(a));
 
-  const baseCurrency = activeTrip?.baseCurrency ?? 'USD';
+  const baseCurrency = activeTrip?.baseCurrency ?? DEFAULT_CURRENCY;
   const expensesByDay = getExpensesByDay(transactions, baseCurrency);
 
   const tripStartDate = activeTrip?.startDate ?? null;

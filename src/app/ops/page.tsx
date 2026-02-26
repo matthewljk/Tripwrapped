@@ -12,6 +12,7 @@ import { computeNetBalances, getTotalExpenseInBase, getExpenseByCategoryInBase }
 import { simplifyDebts, type Settlement } from '@/lib/debtSimplification';
 import { getCategoryLabel } from '@/lib/transactionCategories';
 import Link from 'next/link';
+import { DEFAULT_CURRENCY } from '@/lib/constants';
 
 const dataClient = generateClient<Schema>();
 
@@ -39,7 +40,7 @@ function formatDateLabel(dateKey: string): string {
 function formatAmount(amount: number, currency: string): string {
   return new Intl.NumberFormat(undefined, {
     style: 'currency',
-    currency: currency || 'USD',
+    currency: currency || DEFAULT_CURRENCY,
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(amount);
@@ -47,14 +48,14 @@ function formatAmount(amount: number, currency: string): string {
 
 /** Infer display currency from transactions when trip has none set (most common currency). */
 function inferBaseCurrency(transactions: Transaction[]): string {
-  if (transactions.length === 0) return 'USD';
+  if (transactions.length === 0) return DEFAULT_CURRENCY;
   const byCurrency: Record<string, number> = {};
   for (const tx of transactions) {
-    const c = (tx.currency || 'USD').trim();
+    const c = (tx.currency || DEFAULT_CURRENCY).trim();
     byCurrency[c] = (byCurrency[c] ?? 0) + 1;
   }
   const sorted = Object.entries(byCurrency).sort((a, b) => b[1] - a[1]);
-  return sorted[0]?.[0] ?? 'USD';
+  return sorted[0]?.[0] ?? DEFAULT_CURRENCY;
 }
 
 export default function OpsPage() {
@@ -66,7 +67,7 @@ export default function OpsPage() {
   const [transactionHistoryShowMore, setTransactionHistoryShowMore] = useState(false);
 
   const tripBaseCurrency = (activeTrip?.baseCurrency || '').trim();
-  const baseCurrency = tripBaseCurrency || inferBaseCurrency(transactions) || 'USD';
+  const baseCurrency = tripBaseCurrency || inferBaseCurrency(transactions) || DEFAULT_CURRENCY;
 
   const loadTransactions = useCallback(() => {
     if (!activeTripId) {

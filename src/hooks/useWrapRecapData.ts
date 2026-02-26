@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../amplify/data/resource';
 import { buildWrapRecap, type WrapRecapData } from '@/lib/wrapRecap';
+import { DEFAULT_CURRENCY } from '@/lib/constants';
 
 const dataClient = generateClient<Schema>();
 
@@ -29,7 +30,7 @@ export function useWrapRecapData(activeTripId: string | null) {
       const trip = tripRes.data ?? null;
       const media = (mediaRes.data ?? []) as Schema['Media']['type'][];
       const transactions = (txRes.data ?? []) as Schema['Transaction']['type'][];
-      const baseCurrency = (trip?.baseCurrency?.trim() || 'USD') as string;
+      const baseCurrency = (trip?.baseCurrency?.trim() || DEFAULT_CURRENCY) as string;
       const recap = buildWrapRecap(trip, media, transactions, baseCurrency);
       setData(recap);
     } catch (e) {

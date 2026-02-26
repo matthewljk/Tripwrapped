@@ -7,10 +7,27 @@ import type { Schema } from '../../../amplify/data/resource';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { useActiveTrip } from '@/hooks/useActiveTrip';
 import { useUserProfile } from '@/hooks/useUserProfile';
+import { DEFAULT_CURRENCY } from '@/lib/constants';
 
 const client = generateClient<Schema>();
 
 const CURRENCIES = ['USD', 'EUR', 'GBP', 'SGD', 'AUD', 'JPY', 'KRW', 'CAD', 'CHF', 'THB', 'MYR', 'IDR', 'PHP', 'VND'];
+const DEFAULT_BUDGET_PER_PAX = 1000;
+
+function toDateString(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+function todayString(): string {
+  return toDateString(new Date());
+}
+function oneWeekFromTodayString(): string {
+  const d = new Date();
+  d.setDate(d.getDate() + 7);
+  return toDateString(d);
+}
 
 /** Normalise trip code: uppercase, no spaces (for uniqueness and consistent lookup). */
 function normalizeTripCode(value: string): string {
@@ -26,10 +43,10 @@ export default function TripsPage() {
   const [profileSaveSuccess, setProfileSaveSuccess] = useState(false);
   const [createCode, setCreateCode] = useState('');
   const [createName, setCreateName] = useState('');
-  const [createStartDate, setCreateStartDate] = useState('');
-  const [createEndDate, setCreateEndDate] = useState('');
-  const [createBaseCurrency, setCreateBaseCurrency] = useState('SGD');
-  const [createBudgetPerPax, setCreateBudgetPerPax] = useState('');
+  const [createStartDate, setCreateStartDate] = useState(() => todayString());
+  const [createEndDate, setCreateEndDate] = useState(() => oneWeekFromTodayString());
+  const [createBaseCurrency, setCreateBaseCurrency] = useState(DEFAULT_CURRENCY);
+  const [createBudgetPerPax, setCreateBudgetPerPax] = useState(String(DEFAULT_BUDGET_PER_PAX));
   const [createAllowAnyDelete, setCreateAllowAnyDelete] = useState(false);
   const [joinCode, setJoinCode] = useState('');
   const [createError, setCreateError] = useState<string | null>(null);
@@ -76,16 +93,16 @@ export default function TripsPage() {
     }
   }, [activeTrip, activeTripId]);
 
-  // Keep trip settings form in sync with saved trip data from the backend (currency, dates, budget, etc.)
+  // Keep trip settings form in sync with saved trip data from the backend (currency, dates, budget, etc.); use defaults when empty
   useEffect(() => {
     if (!activeTrip) return;
-    setSettingsBaseCurrency((activeTrip.baseCurrency ?? '').trim());
-    setSettingsStartDate((activeTrip.startDate ?? '').trim());
-    setSettingsEndDate((activeTrip.endDate ?? '').trim());
+    setSettingsBaseCurrency((activeTrip.baseCurrency ?? '').trim() || DEFAULT_CURRENCY);
+    setSettingsStartDate((activeTrip.startDate ?? '').trim() || todayString());
+    setSettingsEndDate((activeTrip.endDate ?? '').trim() || oneWeekFromTodayString());
     setSettingsBudgetPerPax(
-      activeTrip.budgetPerPax != null && !Number.isNaN(activeTrip.budgetPerPax)
+      activeTrip.budgetPerPax != null && !Number.isNaN(activeTrip.budgetPerPax) && activeTrip.budgetPerPax >= 0
         ? String(activeTrip.budgetPerPax)
-        : ''
+        : String(DEFAULT_BUDGET_PER_PAX)
     );
     setSettingsAllowAnyDelete(activeTrip.allowAnyMemberToDelete === true);
   }, [activeTrip?.id, activeTrip?.baseCurrency, activeTrip?.startDate, activeTrip?.endDate, activeTrip?.budgetPerPax, activeTrip?.allowAnyMemberToDelete]);
@@ -142,10 +159,10 @@ export default function TripsPage() {
       await setActiveTripId(trip.id);
       setCreateCode('');
       setCreateName('');
-      setCreateStartDate('');
-      setCreateEndDate('');
-      setCreateBaseCurrency('SGD');
-      setCreateBudgetPerPax('');
+      setCreateStartDate(todayString());
+      setCreateEndDate(oneWeekFromTodayString());
+      setCreateBaseCurrency(DEFAULT_CURRENCY);
+      setCreateBudgetPerPax(String(DEFAULT_BUDGET_PER_PAX));
       setCreateSuccess(true);
       refresh();
     } catch (err) {
@@ -339,7 +356,7 @@ export default function TripsPage() {
                     }
                     try {
                       const budgetVal = settingsBudgetPerPax.trim() ? parseFloat(settingsBudgetPerPax) : null;
-                      const { data: updated } = await client.models.Trip.update({
+                      const { data: updated, errors } = await client.models.Trip.update({
                         id: activeTrip.id,
                         baseCurrency: savedCurrency || null,
                         startDate: settingsStartDate.trim() || null,
@@ -347,6 +364,16 @@ export default function TripsPage() {
                         budgetPerPax: budgetVal != null && !Number.isNaN(budgetVal) && budgetVal >= 0 ? budgetVal : null,
                         allowAnyMemberToDelete: settingsAllowAnyDelete,
                       });
+                      if (errors?.length) {
+                        const msg = errors.map((e) => e.message).join(' ');
+                        setSettingsSaveError(
+                          msg.includes('Unauthorized')
+                            ? 'Update was denied. The backend may only allow the trip owner to change settings. Redeploy the production backend so any trip member can update (see README).'
+                            : msg || 'Could not save to server.'
+                        );
+                        setTimeout(() => setSettingsSaveError(null), 10000);
+                        return;
+                      }
                       setSettingsSaved(true);
                       setSettingsBaseCurrency(savedCurrency);
                       setSettingsStartDate(settingsStartDate.trim());

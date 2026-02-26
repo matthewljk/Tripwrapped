@@ -5,6 +5,7 @@ import { useWrapRecapData } from '@/hooks/useWrapRecapData';
 import TripVideoCompiler from '@/components/TripVideoCompiler';
 import WrapRecapMediaSelector from '@/components/WrapRecapMediaSelector';
 import { filterRecapByExcluded } from '@/lib/wrapRecap';
+import { DEFAULT_CURRENCY } from '@/lib/constants';
 
 function formatTripDates(start: string | null, end: string | null): string {
   if (!start && !end) return '—';
@@ -16,7 +17,7 @@ function formatTripDates(start: string | null, end: string | null): string {
 function formatCurrency(amount: number, currency: string): string {
   return new Intl.NumberFormat(undefined, {
     style: 'currency',
-    currency: currency || 'USD',
+    currency: currency || DEFAULT_CURRENCY,
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(amount);

@@ -5,6 +5,7 @@ import { getUrl } from 'aws-amplify/storage';
 import type { POICluster } from '@/lib/poiClustering';
 import type { MediaWithLocation } from '@/lib/poiClustering';
 import { getCategoryLabel } from '@/lib/transactionCategories';
+import { DEFAULT_CURRENCY } from '@/lib/constants';
 
 const URL_EXPIRES_IN = 3600;
 
@@ -178,7 +179,7 @@ export default function DailyCard({
   totalExpense = 0,
   expenseByCategory = {},
   expenseByCategoryByCurrency = {},
-  baseCurrency = 'USD',
+  baseCurrency = DEFAULT_CURRENCY,
   participantCount = 1,
   onSaveReview,
   onSaveLocationName,
