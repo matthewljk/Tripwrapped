@@ -143,7 +143,7 @@ export function buildWrapRecap(
       locationName: m.locationName ?? null,
       visited: null,
       storagePath: m.storagePath,
-      uploadedBy: null,
+      uploadedBy: undefined,
       uploadedByUsername: m.uploadedByUsername ?? null,
     }));
   const distanceKm = calculateTripDistance(withLocation);
