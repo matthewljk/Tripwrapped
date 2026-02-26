@@ -229,7 +229,7 @@ export default function TripVideoCompiler({ recapData, onError }: Props) {
         setProgress(`Rendering ${segmentIndex + 1} / ${segments.length}…`);
 
         if (seg.type === 'stats') {
-          drawStats(ctx);
+          drawStats();
           if (elapsed >= STATS_DURATION_MS) {
             segmentIndex++;
             segmentStartTime = elapsed;
