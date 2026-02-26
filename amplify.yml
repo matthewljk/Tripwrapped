@@ -1,5 +1,6 @@
 version: 1
-# Backend runs first: deploys schema and writes amplify_outputs.json.
+# Backend runs first: deploys schema and writes amplify_outputs.json. Frontend build uses that file;
+# do not set NEXT_PUBLIC_AMPLIFY_OUTPUTS in Hosting env or the app may point at an old backend.
 # Secrets (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET) must be set in Amplify Console for the branch.
 # Optimizations: single npm ci (frontend reuses backend node_modules), .npm cache, no --debug.
 backend:
@@ -15,6 +16,8 @@ frontend:
     # preBuild omitted: reuse node_modules from backend phase to save ~1.5–2 min (no second npm ci)
     build:
       commands:
+        # Fail fast if backend did not run or outputs are missing (ensures app uses backend from this build)
+        - test -f amplify_outputs.json && test -s amplify_outputs.json && grep -q '"data"' amplify_outputs.json || (echo "Missing or invalid amplify_outputs.json - ensure backend phase ran" && exit 1)
         # Make server-side env vars available to Next.js API routes / SSR (Amplify does not inject them by default)
         - env | grep -e GOOGLE_MAPS_API_KEY -e GOOGLE_PLACES_API_KEY >> .env.production || true
         - npm run build
@@ -22,6 +25,7 @@ frontend:
     baseDirectory: .next
     files:
       - '**/*'
+  # Do not add repo root to cache - backend writes amplify_outputs.json there each build
   cache:
     paths:
       - .npm/**/*

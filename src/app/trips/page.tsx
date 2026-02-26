@@ -339,7 +339,7 @@ export default function TripsPage() {
                     }
                     try {
                       const budgetVal = settingsBudgetPerPax.trim() ? parseFloat(settingsBudgetPerPax) : null;
-                      await client.models.Trip.update({
+                      const { data: updated } = await client.models.Trip.update({
                         id: activeTrip.id,
                         baseCurrency: savedCurrency || null,
                         startDate: settingsStartDate.trim() || null,
@@ -353,9 +353,8 @@ export default function TripsPage() {
                       setSettingsEndDate(settingsEndDate.trim());
                       setSettingsBudgetPerPax(budgetVal != null && !Number.isNaN(budgetVal) && budgetVal >= 0 ? String(budgetVal) : '');
                       await refresh();
-                      // If we saved a currency but the server didn't persist it (e.g. production backend on old schema), warn
+                      // If we saved a currency but the server didn't persist it (e.g. production API on old schema or wrong backend), warn
                       if (savedCurrency) {
-                        const { data: updated } = await client.models.Trip.get({ id: activeTrip.id });
                         const serverCurrency = (updated?.baseCurrency ?? '').trim();
                         if (serverCurrency !== savedCurrency) {
                           setSettingsBackendWarning(
