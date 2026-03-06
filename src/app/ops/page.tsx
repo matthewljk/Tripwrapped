@@ -8,11 +8,12 @@ import LoadingSpinner from '@/components/LoadingSpinner';
 import TripSelector from '@/components/TripSelector';
 import { useActiveTrip } from '@/hooks/useActiveTrip';
 import { useTripParticipants } from '@/hooks/useTripParticipants';
-import { computeNetBalances, getTotalExpenseInBase, getExpenseByCategoryInBase } from '@/lib/transactionBalances';
+import { computeNetBalances, getTotalExpenseInBase, getExpenseByCategoryInBase, getTransactionSplitBreakdown } from '@/lib/transactionBalances';
 import { simplifyDebts, type Settlement } from '@/lib/debtSimplification';
 import { getCategoryLabel } from '@/lib/transactionCategories';
 import Link from 'next/link';
 import { DEFAULT_CURRENCY } from '@/lib/constants';
+import TransactionEditModal from '@/components/TransactionEditModal';
 
 const dataClient = generateClient<Schema>();
 
@@ -65,6 +66,17 @@ export default function OpsPage() {
   const [loadingTx, setLoadingTx] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [transactionHistoryShowMore, setTransactionHistoryShowMore] = useState(false);
+  const [expandedTxIds, setExpandedTxIds] = useState<Set<string>>(new Set());
+  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
+
+  const toggleTxExpanded = useCallback((id: string) => {
+    setExpandedTxIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
 
   const tripBaseCurrency = (activeTrip?.baseCurrency || '').trim();
   const baseCurrency = tripBaseCurrency || inferBaseCurrency(transactions) || DEFAULT_CURRENCY;
@@ -73,10 +85,10 @@ export default function OpsPage() {
     if (!activeTripId) {
       setTransactions([]);
       setLoadingTx(false);
-      return;
+      return Promise.resolve();
     }
     setLoadingTx(true);
-    dataClient.models.Transaction.list({
+    return dataClient.models.Transaction.list({
       filter: { tripId: { eq: activeTripId } },
     })
       .then(({ data }) => {
@@ -130,6 +142,64 @@ export default function OpsPage() {
     byDay.set(key, list);
   }
   const dateKeys = Array.from(byDay.keys()).sort((a, b) => b.localeCompare(a));
+
+  const renderTransactionRow = (tx: Transaction) => {
+    const breakdown = getTransactionSplitBreakdown(tx);
+    const isExpanded = expandedTxIds.has(tx.id);
+    return (
+      <li key={tx.id} className="border-b border-slate-100 last:border-b-0">
+        <button
+          type="button"
+          onClick={() => toggleTxExpanded(tx.id)}
+          className="flex w-full flex-col gap-0.5 px-3 py-2.5 text-left text-sm hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-inset sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-4 sm:py-3"
+          aria-expanded={isExpanded}
+        >
+          <div className="min-w-0 flex-1">
+            <p className="font-medium text-slate-900 truncate">
+              {tx.description?.trim() || 'Expense'}
+            </p>
+            <p className="text-xs text-slate-500">
+              {getCategoryLabel(tx.categoryId)} · {displayName(tx.paidBy)} paid
+            </p>
+          </div>
+          <span className="flex flex-shrink-0 items-center gap-2 font-medium text-slate-900">
+            {formatAmount(tx.amount, tx.currency)}
+            <span
+              className="text-slate-400 transition-transform"
+              style={{ transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)' }}
+              aria-hidden
+            >
+              ▶
+            </span>
+          </span>
+        </button>
+        {isExpanded && (
+          <div className="border-t border-slate-100 bg-slate-50/60 px-3 py-3 sm:px-4">
+            <p className="text-xs font-medium uppercase text-slate-500">Who paid how much</p>
+            <p className="mt-1 text-sm text-slate-800">
+              {displayName(tx.paidBy)} paid {formatAmount(tx.amount, tx.currency)}
+            </p>
+            <p className="mt-3 text-xs font-medium uppercase text-slate-500">Allocated to each</p>
+            <ul className="mt-1 space-y-1">
+              {breakdown.map(({ userId, amount }) => (
+                <li key={userId} className="flex justify-between text-sm text-slate-700">
+                  <span>{displayName(userId)}</span>
+                  <span className="font-medium text-slate-900">{formatAmount(amount, tx.currency)}</span>
+                </li>
+              ))}
+            </ul>
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setSelectedTransaction(tx); }}
+              className="mt-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
+            >
+              Edit
+            </button>
+          </div>
+        )}
+      </li>
+    );
+  };
 
   if (loading) return <LoadingSpinner />;
 
@@ -281,21 +351,7 @@ export default function OpsPage() {
                         {formatDateLabel(dateKey)}
                       </div>
                       <ul className="divide-y divide-slate-100">
-                        {(byDay.get(dateKey) ?? []).map((tx) => (
-                          <li key={tx.id} className="flex flex-col gap-0.5 px-3 py-2.5 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-4 sm:py-3">
-                            <div className="min-w-0 flex-1">
-                              <p className="font-medium text-slate-900 truncate">
-                                {tx.description?.trim() || 'Expense'}
-                              </p>
-                              <p className="text-xs text-slate-500">
-                                {getCategoryLabel(tx.categoryId)} · {displayName(tx.paidBy)} paid
-                              </p>
-                            </div>
-                            <span className="flex-shrink-0 font-medium text-slate-900">
-                              {formatAmount(tx.amount, tx.currency)}
-                            </span>
-                          </li>
-                        ))}
+                        {(byDay.get(dateKey) ?? []).map(renderTransactionRow)}
                       </ul>
                     </div>
                   ))}
@@ -310,21 +366,7 @@ export default function OpsPage() {
                               {formatDateLabel(dateKey)}
                             </div>
                             <ul className="divide-y divide-slate-100">
-                              {(byDay.get(dateKey) ?? []).map((tx) => (
-                                <li key={tx.id} className="flex flex-col gap-0.5 px-3 py-2.5 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-4 sm:py-3">
-                                  <div className="min-w-0 flex-1">
-                                    <p className="font-medium text-slate-900 truncate">
-                                      {tx.description?.trim() || 'Expense'}
-                                    </p>
-                                    <p className="text-xs text-slate-500">
-                                      {getCategoryLabel(tx.categoryId)} · {displayName(tx.paidBy)} paid
-                                    </p>
-                                  </div>
-                                  <span className="flex-shrink-0 font-medium text-slate-900">
-                                    {formatAmount(tx.amount, tx.currency)}
-                                  </span>
-                                </li>
-                              ))}
+                              {(byDay.get(dateKey) ?? []).map(renderTransactionRow)}
                             </ul>
                           </div>
                         ))}
@@ -352,6 +394,25 @@ export default function OpsPage() {
               </>
             )}
           </section>
+
+          {selectedTransaction && (
+            <TransactionEditModal
+              transaction={selectedTransaction}
+              participants={participants}
+              onClose={() => setSelectedTransaction(null)}
+              onSaved={async () => {
+                if (selectedTransaction) {
+                  setExpandedTxIds((prev) => {
+                    const next = new Set(prev);
+                    next.delete(selectedTransaction.id);
+                    return next;
+                  });
+                }
+                await loadTransactions();
+                refresh();
+              }}
+            />
+          )}
         </>
       )}
     </div>

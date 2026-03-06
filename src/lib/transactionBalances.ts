@@ -46,6 +46,25 @@ function getSharesInBase(
   return map;
 }
 
+/** Per-person share in transaction currency for display (e.g. ops breakdown). */
+export function getTransactionSplitBreakdown(tx: Transaction): { userId: string; amount: number }[] {
+  const amount = tx.amount ?? 0;
+  if (tx.customSplitAmountsJson?.trim()) {
+    try {
+      const custom = JSON.parse(tx.customSplitAmountsJson) as Record<string, number>;
+      return Object.entries(custom)
+        .filter(([, amt]) => amt > 0)
+        .map(([userId, amt]) => ({ userId, amount: amt }));
+    } catch {
+      // fall through to equal
+    }
+  }
+  const splitBetween = (tx.splitBetween ?? []).filter((id): id is string => id != null);
+  const n = splitBetween.length || 1;
+  const each = amount / n;
+  return splitBetween.map((userId) => ({ userId, amount: each }));
+}
+
 /**
  * Compute net balance for each user: total they paid minus total their share.
  * Positive = they are owed money, negative = they owe money.

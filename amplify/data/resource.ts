@@ -45,8 +45,7 @@ const schema = a.schema({
     })
     .secondaryIndexes((index) => [index('tripId')])
     .authorization((allow) => [
-      allow.authenticated().to(['read', 'create']),
-      allow.ownerDefinedIn('paidBy').to(['update', 'delete']),
+      allow.authenticated().to(['read', 'create', 'update', 'delete']),
     ]),
 
   TripMember: a

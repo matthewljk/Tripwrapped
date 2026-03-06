@@ -14,9 +14,19 @@ export default function AddPage() {
   const { activeTripId, activeTrip, hasTrip, loading, refresh } = useActiveTrip();
   const [uploadOpen, setUploadOpen] = useState(false);
   const [addTransactionExpanded, setAddTransactionExpanded] = useState(false);
+  const [ackMessage, setAckMessage] = useState<string | null>(null);
 
-  const handleUploadSuccess = useCallback(() => {}, []);
-  const handleTransactionSuccess = useCallback(() => {}, []);
+  const showAck = useCallback((message: string) => {
+    setAckMessage(message);
+  }, []);
+
+  const handleUploadSuccess = useCallback(() => {
+    showAck('Photos or videos added');
+  }, [showAck]);
+
+  const handleTransactionSuccess = useCallback(() => {
+    showAck('Transaction added');
+  }, [showAck]);
 
   // Refetch trip data when Add page is shown so saved trip currency (from Trips) is up to date
   useEffect(() => {
@@ -104,6 +114,30 @@ export default function AddPage() {
         activeTripId={activeTripId}
         onSuccess={handleUploadSuccess}
       />
+
+      {ackMessage && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="ack-title"
+        >
+          <div
+            className="absolute inset-0 bg-slate-900/50"
+            onClick={() => setAckMessage(null)}
+            aria-hidden="true"
+          />
+          <div
+            className="relative rounded-2xl border border-green-200 bg-white px-6 py-5 shadow-xl sm:min-w-[280px]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p id="ack-title" className="text-center font-medium text-green-800">
+              {ackMessage}
+            </p>
+            <p className="mt-2 text-center text-sm text-slate-500">Click outside to close</p>
+          </div>
+        </div>
+      )}
     </>
   );
 }
