@@ -48,7 +48,7 @@ export default function TransactionEditModal({
     const ts = tx.timestamp ?? '';
     setDateStr(ts ? ts.slice(0, 10) : '');
     setCategoryId((tx.categoryId as CategoryId) || 'other');
-    setIncludedInSplit(new Set((tx.splitBetween ?? []).filter(Boolean)));
+    setIncludedInSplit(new Set((tx.splitBetween ?? []).filter((id): id is string => typeof id === 'string')));
     if (tx.customSplitAmountsJson?.trim()) {
       try {
         const custom = JSON.parse(tx.customSplitAmountsJson) as Record<string, number>;
